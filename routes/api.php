@@ -7,6 +7,7 @@ use App\Http\Controllers\api\AuthController;
 use App\Http\Controllers\api\user\Enquiry;
 use App\Http\Controllers\api\user\MeetingController;
 use App\Http\Controllers\api\user\Sos;
+use App\Http\Controllers\api\user\TrainingController;
 use App\Http\Controllers\api\user\UserController;
 
 /*
@@ -44,6 +45,8 @@ Route::group(['middleware' => 'jwt.verify'], function () {
 //enquiries
 Route::resource('enquiries', Enquiry::class);
 
+//Trainning
+Route::get("trainings/videos/{id}", [TrainingController::class, 'videos']);
 
 //admin routes
 Route::prefix('admin')

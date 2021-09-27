@@ -104,6 +104,9 @@ class UserController extends Controller
             $user->email = isset($request->email) ? $request->email : '';
             $user->mobile = isset($request->mobile) ? $request->mobile : '';
             $user->gender = isset($request->gender) ? $request->gender : '';
+            $user->experience = isset($request->experience) ? $request->experience : NULL;
+            $user->operating_since = isset($request->operating_since) ? $request->operating_since : 0;
+            $user->ibo_duty_mode = isset($request->ibo_duty_mode) ? $request->ibo_duty_mode : NULL;
             $user->username = isset($request->username) ? $request->username : NULL;
             $user->dob = !empty($request->dob) ? date("Y-m-d", strtotime($request->dob)) : NULL;
             $user->profile_pic = !empty($profile_pic_url) ? $profile_pic_url : $user->profile_pic;

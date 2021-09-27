@@ -29,6 +29,8 @@ class CreateUsersTable extends Migration
             $table->boolean('is_logged_in')->default(0);
             $table->timestamp('last_logged_in')->nullable();
             $table->enum('ibo_duty_mode', ['offline', 'online'])->nullable();
+            $table->string('operating_since')->default(0);
+            $table->enum("experience", ["beginner", "intermediate", "advanced"])->nullable();
             $table->string('profile_pic')->default('');
             $table->string('system_ip')->default('');
             $table->unsignedBigInteger('address_id')->nullable();

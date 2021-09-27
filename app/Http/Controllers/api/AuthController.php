@@ -75,6 +75,7 @@ class AuthController extends Controller
         $user->is_logged_in = 1;
         $user->save();
         $info = [
+            'id'       => $user->id,
             'first'    => $user->first,
             'last'    => $user->last,
             'fullname' => $user->first . ' ' . $user->last,
