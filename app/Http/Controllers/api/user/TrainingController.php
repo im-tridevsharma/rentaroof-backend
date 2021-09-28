@@ -16,7 +16,9 @@ class TrainingController extends Controller
         $user = User::find($id);
         if ($user) {
             //find all gloabl trainings
-            $globals = Training::where("type", "global")->get();
+            $globals = Training::where("type", "global")
+                ->where("video_urls", "!=", "[]")
+                ->get();
             $videos = [];
             foreach ($globals as $t) {
                 $video = json_decode($t->video_urls);
@@ -30,7 +32,10 @@ class TrainingController extends Controller
                 }
             }
             //find personal
-            $personal = DB::table("trainings")->where("type", "user")->whereRaw("FIND_IN_SET(?, user_ids) > 0", ["$user->id"])->get();
+            $personal = Training::where("type", "user")
+                ->where("video_urls", "!=", "[]")
+                ->whereRaw("JSON_CONTAINS(user_ids, '\"{$user->id}\"')")
+                ->get();
             foreach ($personal as $t) {
                 $video = json_decode($t->video_urls);
                 foreach ($video as $v) {
@@ -43,7 +48,11 @@ class TrainingController extends Controller
                 }
             }
 
-            return $personal;
+            return response([
+                'status'    => true,
+                'message'   => 'Training videos fetched successfully.',
+                'data'      => $videos
+            ], 200);
         }
 
         return response([
