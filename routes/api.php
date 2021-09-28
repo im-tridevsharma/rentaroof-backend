@@ -47,6 +47,7 @@ Route::resource('enquiries', Enquiry::class);
 
 //Trainning
 Route::get("trainings/videos/{id}", [TrainingController::class, 'videos']);
+Route::get("trainings/pdfs/{id}", [TrainingController::class, 'pdfs']);
 
 //admin routes
 Route::prefix('admin')
