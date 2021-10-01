@@ -1,14 +1,15 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\api\AuthController;
 use App\Http\Controllers\api\user\Enquiry;
 use App\Http\Controllers\api\user\MeetingController;
+use App\Http\Controllers\api\user\SettingController;
 use App\Http\Controllers\api\user\Sos;
 use App\Http\Controllers\api\user\TrainingController;
 use App\Http\Controllers\api\user\UserController;
+use Hamcrest\Core\Set;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,14 +41,19 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     #update meeting status
     Route::post('meetings/update/{id}/status', [MeetingController::class, 'update_status']);
     Route::resource('meetings', MeetingController::class);
+
+    //Trainning
+    Route::get("trainings/videos/{id}", [TrainingController::class, 'videos']);
+    Route::get("trainings/pdfs/{id}", [TrainingController::class, 'pdfs']);
+
+    //settings
+    Route::get("settings/{id}", [SettingController::class, 'get']);
+    Route::post("settings/{id}", [SettingController::class, 'set']);
+    Route::post("settings/account_status/{id}", [SettingController::class, 'change_account_status']);
 });
 
 //enquiries
 Route::resource('enquiries', Enquiry::class);
-
-//Trainning
-Route::get("trainings/videos/{id}", [TrainingController::class, 'videos']);
-Route::get("trainings/pdfs/{id}", [TrainingController::class, 'pdfs']);
 
 //admin routes
 Route::prefix('admin')

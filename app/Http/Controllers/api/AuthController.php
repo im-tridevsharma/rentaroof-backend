@@ -83,7 +83,8 @@ class AuthController extends Controller
             'mobile' => $user->mobile,
             'role' => $user->role,
             'profile_pic' => $user->profile_pic,
-            'permissions' => []
+            'permissions' => [],
+            'account_status'  => $user->account_status
         ];
         return $this->respondWithToken($token, $info);
     }

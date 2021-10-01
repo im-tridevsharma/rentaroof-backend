@@ -37,6 +37,7 @@ class CreateUsersTable extends Migration
             $table->foreign('address_id')->references('id')->on('addresses')->onDelete('cascade');
             $table->unsignedBigInteger('kyc_id')->nullable();
             $table->foreign('kyc_id')->references('id')->on('kyc_verifications')->onDelete('cascade');
+            $table->string("account_status")->default('activated');
             $table->timestamps();
         });
     }
