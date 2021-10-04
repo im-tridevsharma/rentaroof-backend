@@ -8,8 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Crypt;
-use Tymon\JWTAuth\Claims\JwtId;
+use Exception;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
@@ -66,11 +65,20 @@ class AuthController extends Controller
             $credentials['email'] = $request->email;
         }
 
-        if (!$token = JWTAuth::attempt($credentials)) {
+        try {
+            if (!$token = JWTAuth::attempt($credentials)) {
+                return response([
+                    'message' => $isMobileUser ? "Mobile or Password is wrong!" : "Email or Password is wrong!"
+                ], 401);
+            }
+        } catch (Exception $e) {
             return response([
-                'message' => $isMobileUser ? "Mobile or Password is wrong!" : "Email or Password is wrong!"
-            ], 401);
+                'status'    =>  false,
+                'message'   => 'Some errors occured.',
+                'error'     => [$e->errorInfo[count($e->errorInfo) - 1]]
+            ], 500);
         }
+
         $user = JWTAuth::user();
         $user->is_logged_in = 1;
         $user->save();
@@ -166,7 +174,7 @@ class AuthController extends Controller
     {
         $user = true;
         if ($request->input('mode')) {
-            $user = JWTAuth::user()->load('address');
+            $user = JWTAuth::user()->load(['address', 'kyc']);
         }
 
         return response([

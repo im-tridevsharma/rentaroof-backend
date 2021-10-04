@@ -4,6 +4,7 @@ namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\KycVerification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -67,13 +68,26 @@ class UserController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'first'        => 'required|string|between:2,25',
-            'email'        => 'required|email',
             'mobile'       => 'required|digits_between:10,12',
             'gender'       => 'required|in:male,female,other',
             'profile_pic'  => 'mimes:jpg,png,jpeg|max:2048'
-        ]);
+        ];
+
+        $errorMessages = [
+            'doc_type.required' => "Please select a document type to upload.",
+            'document.required' => "Please upload a document you have selected.",
+        ];
+
+        if (isset($request->mode) && $request->mode == 'kyc') {
+            $rules['doc_type']  = 'required|string';
+            $rules['document']  = 'required|mimes:jpg,png,jpeg,pdf|max:2048';
+        } else {
+            $rules['email'] = 'required|email';
+        }
+
+        $validator = Validator::make($request->all(), $rules, $errorMessages);
 
         if ($validator->fails()) {
             return response([
@@ -101,8 +115,8 @@ class UserController extends Controller
         if ($user) {
             $user->first = $request->first;
             $user->last  = isset($request->last) ? $request->last : '';
-            $user->email = isset($request->email) ? $request->email : '';
-            $user->mobile = isset($request->mobile) ? $request->mobile : '';
+            $user->email = isset($request->email) ? $request->email : (!empty($user->email) ? $user->email : NULL);
+            $user->mobile = isset($request->mobile) ? $request->mobile : (!empty($user->mobile) ? $user->mobile : NULL);
             $user->gender = isset($request->gender) ? $request->gender : '';
             $user->experience = isset($request->experience) ? $request->experience : NULL;
             $user->operating_since = isset($request->operating_since) ? $request->operating_since : 0;
@@ -129,6 +143,38 @@ class UserController extends Controller
                         $user->save();
                     }
                 }
+
+                //update kyc details
+                if (isset($request->mode) && $request->mode == 'kyc') {
+                    $kyc = $user->kyc_id ? KycVerification::find($user->kyc_id) : new KycVerification;
+                    $kyc->document_type = $request->doc_type;
+                    $kyc->user_id = $user->id;
+                    $kyc->document_number = '';
+
+                    //upload kyc document to server
+                    if ($request->hasFile('document')) {
+                        $role = $user->role == 'ibo' ? 'ibos' : $user->role;
+                        $upload_dir = "/uploads/" . $role . "/kyc";
+
+                        if (!empty($kyc->document_upload)) {
+                            $olddoc = $kyc->document_upload;
+                            if (Storage::disk('digitalocean')->exists($upload_dir . '/' . basename($olddoc))) {
+                                Storage::disk('digitalocean')->delete($upload_dir . '/' . basename($olddoc));
+                            }
+                        }
+
+                        $name = Storage::disk('digitalocean')->put($upload_dir, $request->file('document'), 'public');
+                        $kyc->document_upload = Storage::disk('digitalocean')->url($name);
+                    } else {
+                        $kyc->document_upload = !empty($kyc->document_upload) ? $kyc->document_upload : '';
+                    }
+
+                    if ($kyc->save()) {
+                        $user->kyc_id = $kyc->id;
+                        $user->save();
+                    }
+                }
+
                 return response([
                     'status'    => true,
                     'message'   => 'Profile updated successfully.',

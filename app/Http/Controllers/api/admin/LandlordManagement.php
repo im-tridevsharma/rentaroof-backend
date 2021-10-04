@@ -50,6 +50,53 @@ class LandlordManagement extends Controller
         ], 500);
     }
 
+    /**
+     * update kyc status
+     */
+    public function verify_kyc(Request $request, $id)
+    {
+        $validator = Validator::make($request->input(), [
+            'status'    => 'required|boolean',
+            'user_id'   => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'Some errors occured',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
+        $kyc = KycVerification::where("user_id", $request->user_id)->where("id", $id)->count();
+        if ($kyc) {
+            $kyc = KycVerification::find($id);
+            $kyc->is_verified = $request->status;
+            if ($request->status == 0) {
+                $kyc->verification_issues = isset($request->reason) ? $request->reason : '';
+            } else {
+                $kyc->verified_at = date("Y-m-d H:i:s");
+                $kyc->verification_issues = '';
+            }
+
+            if ($kyc->save()) {
+                return response([
+                    'status'    => true,
+                    'message'   => 'Kyc status updated successfully.'
+                ], 200);
+            }
+
+            return response([
+                'status'    => false,
+                'message'   => 'Something went wrong!'
+            ], 500);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Details not found.'
+        ], 404);
+    }
 
     /**
      * Store a newly created resource in storage.

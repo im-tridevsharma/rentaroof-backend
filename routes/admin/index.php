@@ -34,9 +34,11 @@ Route::get('users/total', [UserManagement::class, 'total'])->middleware('admin')
 Route::resource('users', UserManagement::class)->middleware('admin');
 //manage ibos
 Route::get('ibos/total', [IBOManagement::class, 'total'])->middleware('admin');
+Route::post('ibos/kyc/verification/{id}', [IBOManagement::class, 'verify_kyc'])->middleware('admin');
 Route::resource('ibos', IBOManagement::class)->middleware('admin');
 //manage landlords
 Route::get('landlords/total', [LandlordManagement::class, 'total'])->middleware('admin');
+Route::post('landlords/kyc/verification/{id}', [LandlordManagement::class, 'verify_kyc'])->middleware('admin');
 Route::resource('landlords', LandlordManagement::class)->middleware('admin');
 //manage amenities
 Route::resource('amenities', AmenityManagement::class)->middleware('admin');
