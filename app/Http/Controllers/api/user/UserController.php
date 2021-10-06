@@ -251,6 +251,9 @@ class UserController extends Controller
      */
     public function destroy($id)
     {
-        //
+        return response([
+            'status'   => false,
+            'message'  => "Api endpoint is not supported."
+        ]);
     }
 }

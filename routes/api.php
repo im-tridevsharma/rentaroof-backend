@@ -9,7 +9,6 @@ use App\Http\Controllers\api\user\SettingController;
 use App\Http\Controllers\api\user\Sos;
 use App\Http\Controllers\api\user\TrainingController;
 use App\Http\Controllers\api\user\UserController;
-use Hamcrest\Core\Set;
 
 /*
 |--------------------------------------------------------------------------

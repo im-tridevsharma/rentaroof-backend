@@ -33,9 +33,9 @@ class AuthController extends Controller
     {
         $isMobileUser = false;
 
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'password' => 'required|string|min:8'
-        ]);
+        ];
 
         $errorMessages = [
             'required' => 'The :attribute field can not be blank.'
