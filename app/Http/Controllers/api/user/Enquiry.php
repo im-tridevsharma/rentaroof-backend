@@ -68,9 +68,9 @@ class Enquiry extends Controller
         $enquiry->email = $request->email;
         $enquiry->mobile = $request->mobile;
         $enquiry->name = isset($request->name) ? $request->name : '';
-        $enquiry->user_id = JWTAuth::user() ? JWTAuth::user()->id : '';
-        $enquiry->subject = isset($request->subject) ? $request->subject : '';
+        $enquiry->user_id = JWTAuth::user() ? JWTAuth::user()->id : NULL;
         $enquiry->type = isset($request->type) ? $request->type : '';
+        $enquiry->property_id = isset($request->property_id) ? $request->property_id : '';
         $enquiry->system_ip = $request->ip();
 
         if ($enquiry->save()) {
@@ -144,10 +144,10 @@ class Enquiry extends Controller
             $enquiry->description = $request->description;
             $enquiry->email = $request->email;
             $enquiry->mobile = $request->mobile;
-            $enquiry->name = isset($request->name) ? $request->name : (isset($enquiry->name) ? $enquiry->name : '');
-            $enquiry->user_id = isset($request->user_id) ? $request->user_id : (isset($enquiry->user_id) ? $enquiry->user_id : '');
-            $enquiry->subject = isset($request->subject) ? $request->subject : (isset($enquiry->subject) ? $enquiry->subject : '');
-            $enquiry->type = isset($request->type) ? $request->type : (isset($enquiry->type) ? $enquiry->type : '');
+            $enquiry->name = isset($request->name) ? $request->name : (!empty($enquiry->name) ? $enquiry->name : '');
+            $enquiry->user_id = isset($request->user_id) ? $request->user_id : (!empty($enquiry->user_id) ? $enquiry->user_id : '');
+            $enquiry->property_id = isset($request->property_id) ? $request->property_id : (!empty($enquiry->property_id) ? $enquiry->property_id : '');
+            $enquiry->type = isset($request->type) ? $request->type : (!empty($enquiry->type) ? $enquiry->type : '');
             $enquiry->system_ip = $request->ip();
 
             if ($enquiry->save()) {

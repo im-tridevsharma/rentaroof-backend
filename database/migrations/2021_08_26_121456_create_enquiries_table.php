@@ -15,12 +15,12 @@ class CreateEnquiriesTable extends Migration
     {
         Schema::create('enquiries', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('title');
-            $table->string('subject')->default('');
+            $table->string('title')->default('');
             $table->text('description')->default('');
             $table->string('type')->nullable();
             $table->string('name');
             $table->string('user_id')->nullable();
+            $table->string('property_id')->nullable();
             $table->string('email')->default('');
             $table->string('mobile')->default('');
             $table->string('system_ip')->default('');

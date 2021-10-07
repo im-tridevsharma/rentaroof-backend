@@ -41,6 +41,12 @@ class EnquiryManagement extends Controller
      */
     public function store(Request $request)
     {
+
+        return response([
+            'status'    => false,
+            'message'   => 'Action not allowed!'
+        ], 401);
+
         $validator = Validator::make($request->all(), [
             'title'         => 'required|string|between:2,100',
             'description'   => 'required|string|max:250',
@@ -63,7 +69,6 @@ class EnquiryManagement extends Controller
         $enquiry->mobile = $request->mobile;
         $enquiry->name = isset($request->name) ? $request->name : '';
         $enquiry->user_id = isset($request->user_id) ? $request->user_id : '';
-        $enquiry->subject = isset($request->subject) ? $request->subject : '';
         $enquiry->type = isset($request->type) ? $request->type : '';
         $enquiry->system_ip = $request->ip();
 
@@ -103,19 +108,6 @@ class EnquiryManagement extends Controller
             'status'    => true,
             'message'   => 'Enquiry not found.'
         ], 404);
-    }
-
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
     }
 
     /**
