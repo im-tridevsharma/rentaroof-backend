@@ -26,7 +26,6 @@ class CreatePropertiesTable extends Migration
             $table->enum('posting_as', ['full_house', 'sharing_basis'])->default('full_house');
             $table->integer('bedrooms')->default(0);
             $table->integer('balconies')->default(0);
-            $table->string('floor_number')->default('ground');
             $table->integer('floors')->default(0);
             $table->enum('furnished_status', ['furnished', 'unfurnished', 'semi-furnished', 'ongoing'])->nullable();
             $table->enum('ownership_type', ['sole', 'joint', 'ownership'])->nullable();

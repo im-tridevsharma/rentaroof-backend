@@ -155,6 +155,10 @@ class AuthController extends Controller
         $user->password = bcrypt($request->password);
         $user->system_ip = $request->ip();
 
+        //generate new userid for user
+        $cid = ["tenant" => "UID-0", "ibo" => "IID-0", "landlord" => "LID-0"];
+        $user->system_userid = $cid[$request->role] . rand(11111, 99999);
+
         //save user to database
         if ($user->save()) {
             return response([

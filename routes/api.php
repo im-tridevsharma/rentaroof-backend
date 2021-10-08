@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\AuthController;
 use App\Http\Controllers\api\user\Enquiry;
 use App\Http\Controllers\api\user\MeetingController;
+use App\Http\Controllers\api\user\PropertyController;
 use App\Http\Controllers\api\user\SettingController;
 use App\Http\Controllers\api\user\Sos;
 use App\Http\Controllers\api\user\TrainingController;
@@ -49,6 +50,9 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::get("settings/{id}", [SettingController::class, 'get']);
     Route::post("settings/{id}", [SettingController::class, 'set']);
     Route::post("settings/account_status/{id}", [SettingController::class, 'change_account_status']);
+
+    //properties
+    Route::resource('properties', PropertyController::class);
 });
 
 //enquiries
