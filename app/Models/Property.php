@@ -36,4 +36,10 @@ class Property extends Model
     {
         return $this->hasMany('App\Models\Meeting');
     }
+
+    //property has gallery
+    public function gallery()
+    {
+        return $this->hasOne('App\Models\PropertyGallery');
+    }
 }

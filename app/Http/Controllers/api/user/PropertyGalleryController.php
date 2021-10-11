@@ -187,7 +187,7 @@ class PropertyGalleryController extends Controller
             }
             $gallery->location_map = json_encode($location_map);
         } else {
-            $gallery->location_map = '';
+            $gallery->location_map = json_encode([]);
         }
 
         $gallery->others = json_encode([]);

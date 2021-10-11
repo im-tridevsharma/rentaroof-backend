@@ -92,6 +92,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     //properties
     Route::post("properties/amenities", [PropertyController::class, 'amenity']);
     Route::post("properties/essentials", [PropertyController::class, 'essential']);
+    Route::post("properties/total", [PropertyController::class, 'total']);
     Route::resource('properties', PropertyController::class);
     Route::resource('properties/galleries', PropertyGalleryController::class);
     Route::resource('properties/addresses', PropertyAddressController::class);
