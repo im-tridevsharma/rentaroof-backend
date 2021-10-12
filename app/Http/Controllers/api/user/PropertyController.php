@@ -4,9 +4,11 @@ namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\Amenity;
 use App\Models\Property;
 use App\Models\PropertyEssential;
 use App\Models\PropertyGallery;
+use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -53,6 +55,44 @@ class PropertyController extends Controller
             'status'    => false,
             'message'   => 'Something went wrong!'
         ], 500);
+    }
+
+    //search properties
+    public function search(Request $request)
+    {
+        $properties = Property::where(function ($query) use ($request) {
+            if ($request->has('search') && !empty($request->search)) {
+                $query->where("name", "like", "%" . $request->search . "%");
+                $query->orWhere("property_code", "like", "%" . $request->search . "%");
+            }
+            if ($request->has('bath') && !empty($request->bath)) {
+                $query->where("bathrooms", $request->bath);
+            }
+            if ($request->has('bed') && !empty($request->bed)) {
+                $query->where("bedrooms", $request->bed);
+            }
+            if ($request->has('ptype') && !empty($request->ptype)) {
+                $query->where("tyoe", $request->ptype);
+            }
+            if ($request->has('min_price') && !empty($request->min_price)) {
+                $query->where("monthly_rent", ">=", $request->min_price);
+            }
+            if ($request->has('max_price') && !empty($request->max_price)) {
+                $query->where("monthly_rent", "<=", $request->max_price);
+            }
+        })->orWhereHas("address", function ($q) use ($request) {
+            if ($request->has('search') && !empty($request->search)) {
+                $q->where("pincode", "like", "%" . $request->search . "%");
+                $q->orWhere("landmark", "like", "%" . $request->search . "%");
+                $q->orWhere("full_address", "like", "%" . $request->search . "%");
+            }
+        })->with("address")->get();
+
+        return response([
+            'status'    => true,
+            'message'   => 'Properties searched successfully.',
+            'data'      => $properties
+        ], 200);
     }
 
     /**
@@ -151,19 +191,59 @@ class PropertyController extends Controller
      */
     public function show($id)
     {
-        $property = Property::find($id);
+        if (is_numeric($id)) {
+            $property = Property::find($id);
+        } else {
+            $property = Property::where("property_code", $id)->first();
+        }
         if ($property) {
+            $amenities_data = [];
+            //find and merge amenities
+            $amenities = json_decode($property->amenities);
+            foreach ($amenities as $a) {
+                array_push($amenities_data, Amenity::find($a));
+            }
+            $property->amenities_data = $amenities_data;
+            $property->posted_by_data = User::find($property->posted_by)->load("address");
+
             return response([
                 'status'    => true,
                 'message'   => 'Property fetched successfully.',
-                'data'      => $property
+                'data'      => $property->load(['address', 'essential', 'gallery'])
             ], 200);
         }
 
         return response([
             'status'    => false,
-            'message'   => 'Property not found.'
-        ], 404);
+            'message'   => 'Something went wrong!'
+        ], 500);
+    }
+
+    public function code($id)
+    {
+        $property = Property::where("property_code", $id)->first();
+
+        if ($property) {
+            $amenities_data = [];
+            //find and merge amenities
+            $amenities = json_decode($property->amenities);
+            foreach ($amenities as $a) {
+                array_push($amenities_data, Amenity::find($a));
+            }
+            $property->amenities_data = $amenities_data;
+            $property->posted_by_data = User::find($property->posted_by)->load("address");
+
+            return response([
+                'status'    => true,
+                'message'   => 'Property fetched successfully.',
+                'data'      => $property->load(['address', 'essential', 'gallery'])
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Something went wrong!'
+        ], 500);
     }
 
     /**

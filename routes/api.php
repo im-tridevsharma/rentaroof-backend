@@ -37,6 +37,9 @@ Route::group(['prefix' => 'auth'], function ($router) {
 
 Route::post('user/signup', [AuthController::class, 'signup']);
 
+
+Route::get("properties/search", [PropertyController::class, 'search']);
+Route::get("properties/code/{id}", [PropertyController::class, 'code']);
 Route::group(['middleware' => 'jwt.verify'], function () {
 
     Route::get("countries", function () {
