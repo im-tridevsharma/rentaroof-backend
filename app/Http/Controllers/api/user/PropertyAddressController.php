@@ -4,7 +4,10 @@ namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\City;
+use App\Models\Country;
 use App\Models\Property;
+use App\Models\State;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -63,6 +66,10 @@ class PropertyAddressController extends Controller
         if ($address->save()) {
             $p = Property::find($request->propertyId);
             $p->address_id = $address->id;
+            $p->country_name = !empty($request->country) ? Country::find($request->country)->name : '';
+            $p->state_name = !empty($request->state) ? State::find($request->state)->name : '';
+            $p->city_name = !empty($request->city) ? City::find($request->city)->name : '';
+            $p->pincode = !empty($request->pincode) ? $request->pincode : '';
             $p->save();
 
             return response([
@@ -140,6 +147,10 @@ class PropertyAddressController extends Controller
             if ($address->save()) {
                 $p = Property::find($request->propertyId);
                 $p->address_id = $address->id;
+                $p->country_name = !empty($request->country) ? Country::find($request->country)->name : '';
+                $p->state_name = !empty($request->state) ? State::find($request->state)->name : '';
+                $p->city_name = !empty($request->city) ? City::find($request->city)->name : '';
+                $p->pincode = !empty($request->pincode) ? $request->pincode : '';
                 $p->save();
 
                 return response([

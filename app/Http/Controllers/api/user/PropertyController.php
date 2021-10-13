@@ -60,31 +60,36 @@ class PropertyController extends Controller
     //search properties
     public function search(Request $request)
     {
-        $properties = Property::where(function ($query) use ($request) {
+        $properties = Property::where("is_approved", 1)->where(function ($query) use ($request) {
             if ($request->has('search') && !empty($request->search)) {
                 $query->where("name", "like", "%" . $request->search . "%");
                 $query->orWhere("property_code", "like", "%" . $request->search . "%");
+                $query->orWhere("country_name", "like", "%" . $request->search . "%");
+                $query->orWhere("state_name", "like", "%" . $request->search . "%");
+                $query->orWhere("city_name", "like", "%" . $request->search . "%");
+                $query->orWhere("pincode", "like", "%" . $request->search . "%");
             }
+        })->where(function ($q) use ($request) {
             if ($request->has('bath') && !empty($request->bath)) {
-                $query->where("bathrooms", $request->bath);
+                $q->where("bathrooms", $request->bath);
             }
             if ($request->has('bed') && !empty($request->bed)) {
-                $query->where("bedrooms", $request->bed);
+                $q->where("bedrooms", $request->bed);
             }
             if ($request->has('ptype') && !empty($request->ptype)) {
-                $query->where("tyoe", $request->ptype);
+                $q->where("type", $request->ptype);
             }
             if ($request->has('min_price') && !empty($request->min_price)) {
-                $query->where("monthly_rent", ">=", $request->min_price);
+                $q->where("monthly_rent", ">=", $request->min_price);
             }
             if ($request->has('max_price') && !empty($request->max_price)) {
-                $query->where("monthly_rent", "<=", $request->max_price);
+                $q->where("monthly_rent", "<=", $request->max_price);
             }
-        })->orWhereHas("address", function ($q) use ($request) {
-            if ($request->has('search') && !empty($request->search)) {
-                $q->where("pincode", "like", "%" . $request->search . "%");
-                $q->orWhere("landmark", "like", "%" . $request->search . "%");
-                $q->orWhere("full_address", "like", "%" . $request->search . "%");
+            if ($request->has('available_from') && !empty($request->available_from)) {
+                $q->whereDate("available_from", ">=", date("Y-m-d", strtotime($request->available_from)));
+            }
+            if ($request->has('available_to') && !empty($request->available_to)) {
+                $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
             }
         })->with("address")->get();
 
