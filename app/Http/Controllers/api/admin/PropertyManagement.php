@@ -54,8 +54,10 @@ class PropertyManagement extends Controller
             $amenities_data = [];
             //find and merge amenities
             $amenities = json_decode($property->amenities);
-            foreach ($amenities as $a) {
-                array_push($amenities_data, Amenity::find($a));
+            if (is_array($amenities)) {
+                foreach ($amenities as $a) {
+                    array_push($amenities_data, Amenity::find($a));
+                }
             }
             $property->amenities_data = $amenities_data;
 

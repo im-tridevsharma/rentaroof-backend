@@ -138,6 +138,9 @@ class UserController extends Controller
                     $address->city = isset($request->city) ? $request->city : (isset($address->city) ? $address->city : NULL);
                     $address->pincode = isset($request->pincode) ? $request->pincode : (isset($address->pincode) ? $address->pincode : '');
 
+                    $address->lat = isset($request->lat) ? $request->lat : (isset($address->lat) ? $address->lat : '');
+                    $address->long = isset($request->long) ? $request->long : (isset($address->long) ? $address->long : '');
+
                     if ($address->save()) {
                         $user->address_id = $address->id;
                         $user->save();

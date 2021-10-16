@@ -54,4 +54,14 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany('App\Models\Meeting');
     }
+
+    public function searches()
+    {
+        return $this->hasMany('App\Models\UserSavedSearch');
+    }
+
+    public function saved_properties()
+    {
+        return $this->hasMany('App\Models\UserSavedProperty');
+    }
 }

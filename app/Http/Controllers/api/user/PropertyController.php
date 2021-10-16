@@ -329,7 +329,11 @@ class PropertyController extends Controller
                 $property->available_immediately = 1;
             }
 
-            $property->description = $request->description ? $request->description : '';
+            $property->description = $request->description ? $request->description : $property->description;
+            $property->maintenence_charge = $request->maintenence_charge ? $request->maintenence_charge : $property->maintenence_charge;
+            $property->maintenence_duration = $request->maintenence_duration ? $request->maintenence_duration : $property->maintenence_duration;
+            $property->selling_price = $request->selling_price ? $request->selling_price : $property->selling_price;
+            $property->offered_price = $request->offered_price ? $request->offered_price : $property->offered_price;
 
             try {
                 if ($property->save()) {
@@ -380,7 +384,7 @@ class PropertyController extends Controller
         if ($p->save()) {
             return response([
                 'status'    => true,
-                'message'   => 'Amenities added successfully.'
+                'message'   => 'Amenities saved successfully.'
             ], 200);
         }
 
@@ -419,6 +423,34 @@ class PropertyController extends Controller
         ], 500);
     }
 
+    //update property essential
+    public function essentialUpdate(Request $request, $id)
+    {
+        $essential = PropertyEssential::find($id);
+        $essential->property_id = $request->propertyId;
+
+        $essential->school = isset($request->school) ? $request->school : $essential->school;
+        $essential->hospital = isset($request->hospital) ? $request->hospital : $essential->hospital;
+        $essential->airport = isset($request->airport) ? $request->airport : $essential->airport;
+        $essential->train = isset($request->train) ? $request->train : $essential->train;
+        $essential->market = isset($request->market) ? $request->market : $essential->market;
+        $essential->restaurent = isset($request->restaurent) ? $request->restaurent : $essential->restaurent;
+
+        if ($essential->save()) {
+            $p = Property::find($request->propertyId);
+            $p->property_essential_id = $essential->id;
+            $p->save();
+            return response([
+                'status'    => true,
+                'message'   => 'Essential updated successfully.'
+            ], 200);
+        }
+
+        return response([
+            'staus'     => false,
+            'message'   => 'Something went wrong!'
+        ], 500);
+    }
     /**
      * Remove the specified resource from storage.
      *
