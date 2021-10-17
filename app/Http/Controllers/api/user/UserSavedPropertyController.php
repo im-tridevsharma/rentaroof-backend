@@ -37,7 +37,7 @@ class UserSavedPropertyController extends Controller
             'property_code'         => 'required',
             'type'                  => 'required|in:visited,saved,favorite',
             'property_name'         => 'required|string',
-            'property_posted_by'    => 'required|string'
+            'property_posted_by'    => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -86,14 +86,64 @@ class UserSavedPropertyController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+
+    /**search saved using custom params */
+    public function search(Request $request)
+    {
+        if ($request->has('property_id')) {
+            $property = UserSavedProperty::where("property_id", $request->property_id);
+            if ($request->has('type')) {
+                $property->where("type", $request->type);
+            }
+            return response([
+                'status'    => true,
+                'message'   => 'Fetched successfully.',
+                'data'      => $property->get()
+            ], 200);
+        }
+
+        if ($request->has('user_id')) {
+            $property = UserSavedProperty::where("user_id", $request->user_id);
+            if ($request->has('type')) {
+                $property->where("type", $request->type);
+            }
+            return response([
+                'status'    => true,
+                'message'   => 'Fetched successfully.',
+                'data'      => $property->get()
+            ], 200);
+        }
+
+        if ($request->has('property_code')) {
+            $property = UserSavedProperty::where("property_code", $request->property_code);
+            if ($request->has('type')) {
+                $property->where("type", $request->type);
+            }
+            return response([
+                'status'    => true,
+                'message'   => 'Fetched successfully.',
+                'data'      => $property->get()
+            ], 200);
+        }
+    }
+
     public function show($id)
     {
         $user = User::find($id);
+        $alldata = UserSavedProperty::where("user_id", $user->id)->get()->map(function ($d) {
+            if (is_numeric($d->property_posted_by)) {
+                $d->property_posted_by = User::find((int)$d->property_posted_by)->first;
+                return $d;
+            } else {
+                return $d;
+            }
+        });
+
         if ($user) {
             return response([
                 'status'    => true,
                 'message'   => 'Saved properties of user fetched successfully.',
-                'data'      => UserSavedProperty::where("user_id", $user->id)->get()
+                'data'      => $alldata
             ], 200);
         }
     }

@@ -79,6 +79,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::put('users/password/{id}', [UserController::class, 'password']);
     Route::get('users/search', [UserController::class, 'search']);
     Route::resource('users/searches', SaveSearches::class);
+    Route::post('users/savedproperties/search', [UserSavedPropertyController::class, 'search']);
     Route::resource('users/savedproperties', UserSavedPropertyController::class);
     Route::resource('users', UserController::class);
     Route::resource('sos', Sos::class);
