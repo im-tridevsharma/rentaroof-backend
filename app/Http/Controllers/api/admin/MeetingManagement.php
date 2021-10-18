@@ -4,6 +4,8 @@ namespace App\Http\Controllers\api\admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Meeting;
+use App\Models\Property;
+use App\Models\User;
 
 class MeetingManagement extends Controller
 {
@@ -14,12 +16,16 @@ class MeetingManagement extends Controller
      */
     public function index()
     {
-        $meetings = Meeting::all();
+        $meetings = Meeting::orderBy("id", "desc")->get();
         if ($meetings) {
             return response([
                 'status'    => true,
                 'message'   => 'Meetings fetched successfully.',
-                'data'      => $meetings
+                'data'      => $meetings->map(function ($u) {
+                    $u->property_id = Property::find($u->property_id)->property_code;
+                    $u->user_id = User::find($u->user_id)->first;
+                    return $u;
+                })
             ], 200);
         }
 
@@ -40,6 +46,8 @@ class MeetingManagement extends Controller
     {
         $meeting = Meeting::find($id);
         if ($meeting) {
+            $meeting->property_id = Property::find($meeting->property_id)->property_code;
+            $meeting->user_id = User::find($meeting->user_id)->first;
             $meeting->meeting_history = json_decode($meeting->meeting_history);
             return response([
                 'status'    => true,

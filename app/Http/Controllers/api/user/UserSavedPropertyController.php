@@ -59,7 +59,7 @@ class UserSavedPropertyController extends Controller
         $savedProperty->rating = isset($request->rating) ? $request->rating : '';
         $savedProperty->property_posted_by = $request->property_posted_by;
 
-        if (UserSavedProperty::where("property_id", $request->property_id)->where("type", $request->type)->count() > 0) {
+        if (UserSavedProperty::where("property_id", $request->property_id)->where("type", $request->type)->where("user_id", $request->user_id)->count() > 0) {
             return response([
                 'status'    => true,
                 'message'   => 'Saved already.',
@@ -95,6 +95,9 @@ class UserSavedPropertyController extends Controller
             if ($request->has('type')) {
                 $property->where("type", $request->type);
             }
+            if ($request->has('user_id')) {
+                $property->where("user_id", $request->user_id);
+            }
             return response([
                 'status'    => true,
                 'message'   => 'Fetched successfully.',
@@ -107,6 +110,9 @@ class UserSavedPropertyController extends Controller
             if ($request->has('type')) {
                 $property->where("type", $request->type);
             }
+            if ($request->has('user_id')) {
+                $property->where("user_id", $request->user_id);
+            }
             return response([
                 'status'    => true,
                 'message'   => 'Fetched successfully.',
@@ -118,6 +124,9 @@ class UserSavedPropertyController extends Controller
             $property = UserSavedProperty::where("property_code", $request->property_code);
             if ($request->has('type')) {
                 $property->where("type", $request->type);
+            }
+            if ($request->has('user_id')) {
+                $property->where("user_id", $request->user_id);
             }
             return response([
                 'status'    => true,

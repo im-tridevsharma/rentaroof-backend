@@ -42,6 +42,8 @@ Route::post('user/signup', [AuthController::class, 'signup']);
 
 Route::get("properties/search", [PropertyController::class, 'search']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);
+Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
+
 Route::group(['middleware' => 'jwt.verify'], function () {
 
     Route::get("countries", function () {
@@ -86,6 +88,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     //meeting routes
     #update meeting status
     Route::post('meetings/update/{id}/status', [MeetingController::class, 'update_status']);
+    Route::post('meetings/update/{id}/reschedule', [MeetingController::class, 'reschedule']);
     Route::resource('meetings', MeetingController::class);
 
     //Trainning

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 use App\Models\Meeting;
+use App\Models\Property;
 use App\Models\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -20,13 +21,20 @@ class MeetingController extends Controller
     public function index()
     {
         $user = JWTAuth::user();
-        $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->get();
+        $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc")->get();
 
         if ($meetings) {
             return response([
                 'status'    => true,
                 'message'   => 'Meetings fetched successfully.',
-                'data'      => $meetings
+                'data'      => $meetings->map(function ($m) {
+                    $p = Property::find($m->property_id);
+                    $u = User::find($m->user_id);
+                    $m->property_data = $p->name . ' - ' . $p->property_code;
+                    $m->front_image = $p->front_image;
+                    $m->ibo = $u->first . ' ' . $u->last;
+                    return $m;
+                })
             ], 200);
         }
 
@@ -81,6 +89,7 @@ class MeetingController extends Controller
                 "id"      => 1,
                 "action"  => "Created",
                 "action_by" => $user->id,
+                "time"    => date("Y-m-d H:i:s"),
                 "name" => $user->first . ' ' . $user->last,
                 "message" => $user->first . "(" . $user->role . ")" . " has created this meeting."
             ]
@@ -214,7 +223,7 @@ class MeetingController extends Controller
     {
         $user = JWTAuth::user();
         $validator = Validator::make($request->input(), [
-            'status'    => 'required|string|in:pending,cancelled,approved'
+            'status'    => 'required|string|in:pending,cancelled,approved,visited,closed'
         ]);
 
         if ($validator->fails()) {
@@ -236,20 +245,97 @@ class MeetingController extends Controller
         if ($meeting && count($meeting) > 0) {
             $meeting = $meeting[0];
             $meeting->meeting_status = $request->status;
+
+            if ($request->status === 'closed') {
+                $meeting->end_time = date("Y-m-d H:i:s");
+            }
+            if ($request->status === 'visited') {
+                $meeting->end_time_expected = date("Y-m-d H:i:s");
+            }
+
             $meeting_history = json_decode($meeting->meeting_history);
             array_push($meeting_history, [
                 "id"      => count($meeting_history) + 1,
                 "action"  => "Status Updated",
                 "action_by" => $user->id,
+                "time"    => date("Y-m-d H:i:s"),
                 "name" => $user->first . ' ' . $user->last,
-                "message" => $user->first . "(" . $user->role . ")" . " has updated meeting's status."
+                "message" => $user->first . "(" . $user->role . ")" . " has updated meeting's status to > " . $request->status
+            ]);
+            $meeting->meeting_history = json_encode($meeting_history);
+
+            if ($meeting->save()) {
+
+                if ($request->status === 'approved') {
+                    Meeting::where("user_id", "!=", $user->id)->where("create_id", $meeting->create_id)->delete();
+                }
+                if ($request->status === 'cancelled') {
+                    Meeting::where("user_id", $user->id)->where("create_id", $meeting->create_id)->delete();
+                }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Meeting updated successfully.',
+                    'data'      => $meeting
+                ], 200);
+            }
+
+            return response([
+                'status'    => false,
+                'message'   => 'Something went wrong.'
+            ], 500);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Meeting not found.'
+        ], 404);
+    }
+
+    public function reschedule(Request $request, $id)
+    {
+        $user = JWTAuth::user();
+        $validator = Validator::make($request->input(), [
+            'date'    => 'required',
+            'time'    => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'Some error occured.',
+                'error'     => $validator->errors()
+            ], 404);
+        }
+
+        $meeting = Meeting::where(function ($q) use ($id, $user) {
+            $q->where("id", $id);
+            $q->where(function ($q) use ($user) {
+                $q->where("user_id", $user->id);
+                $q->orWhere("created_by_id", $user->id);
+            });
+        })->get();
+
+        if ($meeting && count($meeting) > 0) {
+            $meeting = $meeting[0];
+            $meeting->meeting_status = 'scheduled';
+            $meeting->start_time = date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time));
+            $meeting_history = json_decode($meeting->meeting_history);
+            $meeting->rescheduled = 1;
+            array_push($meeting_history, [
+                "id"      => count($meeting_history) + 1,
+                "action"  => "Schedule Updated",
+                "time"    => date("Y-m-d H:i:s"),
+                "action_by" => $user->id,
+                "name" => $user->first . ' ' . $user->last,
+                "message" => $user->first . "(" . $user->role . ")" . " has updated meeting's schedule time to > " . date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time))
             ]);
             $meeting->meeting_history = json_encode($meeting_history);
 
             if ($meeting->save()) {
                 return response([
                     'status'    => true,
-                    'message'   => 'Meeting updated successfully.',
+                    'message'   => 'Meeting scheduled successfully.',
                     'data'      => $meeting
                 ], 200);
             }

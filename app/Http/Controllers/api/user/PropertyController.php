@@ -5,12 +5,14 @@ namespace App\Http\Controllers\api\user;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Amenity;
+use App\Models\Meeting;
 use App\Models\Property;
 use App\Models\PropertyEssential;
 use App\Models\PropertyGallery;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -55,6 +57,85 @@ class PropertyController extends Controller
             'status'    => false,
             'message'   => 'Something went wrong!'
         ], 500);
+    }
+
+
+    //schedule appointment
+    public function appointment(Request $request, $id)
+    {
+
+        $validator = Validator::make($request->all(), [
+            'name'  => 'required|string|between:2,50',
+            'email' => 'required|string',
+            'contact' => 'required|between:10,12',
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'Some errors occured.',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
+        $property = Property::find($id);
+        if ($property) {
+            $address = Address::find($property->address_id);
+
+            $latitude = $address->lat;
+            $longitude = $address->long;
+            $ibos = DB::table("addresses")
+                ->select("user_id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
+                * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
+                + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
+                ->having('distance', '>', 20)
+                ->orderBy('distance', 'asc')
+                ->where("user_id", "!=", NULL)->get();
+
+            $createid = 'ID-' . time();
+
+            if (count($ibos) > 0) {
+                foreach ($ibos as $ibo) {
+                    $user = User::where("role", "ibo")->where("id", $ibo->user_id)->first();
+                    if ($user) {
+                        $meeting = new  Meeting;
+                        $meeting->create_id = $createid;
+                        $meeting->title = 'Property visit request';
+                        $meeting->description = 'Visit for property ' . $property->property_code;
+                        $meeting->user_id = $user->id;
+                        $meeting->user_role = $user->role;
+                        $meeting->property_id = $property->id;
+                        $meeting->name = $request->name;
+                        $meeting->contact = $request->contact;
+                        $meeting->email = $request->email;
+                        $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : NULL;
+                        $meeting->end_time_expected = NULL;
+                        $meeting->end_time = NULL;
+                        $meeting->created_by_name = $request->name;
+                        $meeting->created_by_role = JWTAuth::user() ? JWTAuth::user()->role : 'guest';
+                        $meeting->created_by_id = JWTAuth::user() ? JWTAuth::user()->id : NULL;
+                        $meeting->meeting_history = json_encode([]);
+
+                        $meeting->save();
+                    }
+                }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Secheduled successfully.',
+                ], 200);
+            } else {
+                return response([
+                    'status'    => true,
+                    'message'   => 'Sorry! Executives are not available right now.',
+                ], 400);
+            }
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Property not found!'
+        ], 404);
     }
 
     //search properties

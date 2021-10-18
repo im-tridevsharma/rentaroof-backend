@@ -20,8 +20,9 @@ class CreateMeetingsTable extends Migration
             $table->unsignedBigInteger('user_id')->nullable();
             $table->enum('user_role', ['tenant', 'ibo', 'landlord'])->nullable();
             $table->unsignedBigInteger('property_id')->nullable();
-            $table->string('user_name');
-            $table->string('user_contact');
+            $table->string('name');
+            $table->string('contact');
+            $table->string('email');
             $table->timestamp('start_time')->nullable();
             $table->timestamp('end_time_expected')->nullable();
             $table->timestamp('end_time')->nullable();
@@ -30,7 +31,7 @@ class CreateMeetingsTable extends Migration
             $table->boolean('rescheduled')->default(0);
             $table->unsignedBigInteger('created_by_id')->nullable();
             $table->string('created_by_name')->default('');
-            $table->enum('created_by_role', ['tenant', 'ibo', 'landlord']);
+            $table->enum('created_by_role', ['tenant', 'ibo', 'landlord', 'guest'])->default('guest');
             $table->enum('meeting_status', ['pending', 'cancelled', 'approved'])->default('pending');
             $table->json('meeting_history');
             $table->timestamps();
