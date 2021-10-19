@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\api\admin\PageManagement;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\api\AuthController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\api\user\MeetingController;
 use App\Http\Controllers\api\user\PropertyAddressController;
 use App\Http\Controllers\api\user\PropertyController;
 use App\Http\Controllers\api\user\PropertyGalleryController;
+use App\Http\Controllers\api\user\RatingandReviewController;
 use App\Http\Controllers\api\user\SaveSearches;
 use App\Http\Controllers\api\user\SettingController;
 use App\Http\Controllers\api\user\Sos;
@@ -39,11 +41,12 @@ Route::group(['prefix' => 'auth'], function ($router) {
 
 Route::post('user/signup', [AuthController::class, 'signup']);
 
+Route::get('page', [PageManagement::class, 'getPage']);
 
 Route::get("properties/search", [PropertyController::class, 'search']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);
 Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
-
+Route::resource("properties/reviews", RatingandReviewController::class);
 Route::group(['middleware' => 'jwt.verify'], function () {
 
     Route::get("countries", function () {
@@ -89,6 +92,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     #update meeting status
     Route::post('meetings/update/{id}/status', [MeetingController::class, 'update_status']);
     Route::post('meetings/update/{id}/reschedule', [MeetingController::class, 'reschedule']);
+    Route::get('meetings/landlord/{id}', [MeetingController::class, 'landlord_meetings']);
     Route::resource('meetings', MeetingController::class);
 
     //Trainning

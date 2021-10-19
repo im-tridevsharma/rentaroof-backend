@@ -37,6 +37,24 @@ class PageManagement extends Controller
         ], 500);
     }
 
+    //get page data
+    public function getPage(Request $request)
+    {
+        if ($request->has('slug')) {
+            $page = Pages::where("slug", $request->slug)->first();
+            return response([
+                'status'    => true,
+                'message'   => 'Page data fetched successfully.',
+                'data'      => $page
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Page data not found!'
+        ], 404);
+    }
+
     /**
      * Store a newly created resource in storage.
      *

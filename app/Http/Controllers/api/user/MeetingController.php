@@ -44,6 +44,40 @@ class MeetingController extends Controller
         ], 500);
     }
 
+    /**get meetings of landlord belonged property */
+    public function landlord_meetings($id)
+    {
+        $landlord = User::find($id);
+        if ($landlord) {
+            //fetch properties of landlord
+            $properties = Property::where("posted_by", $landlord->id)->get();
+            $meetings = [];
+            foreach ($properties as $p) {
+                if (Meeting::where("property_id", $p->id)->count() > 0) {
+                    $allm = Meeting::where("property_id", $p->id)->get();
+                    foreach ($allm as $m) {
+                        $p = Property::find($m->property_id);
+                        $u = User::find($m->user_id);
+                        $m->property_data = $p->name . ' - ' . $p->property_code;
+                        $m->front_image = $p->front_image;
+                        $m->ibo = $u->first . ' ' . $u->last;
+                        array_push($meetings, $m);
+                    }
+                }
+            }
+            return response([
+                'status'    => true,
+                'message'   => 'Meetings fetched successfully.',
+                'data'      => $meetings
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Landlord not found!'
+        ], 404);
+    }
+
     /**
      * Store a newly created resource in storage.
      *

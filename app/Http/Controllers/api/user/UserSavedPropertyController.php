@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
+use App\Models\PropertyRatingAndReview;
 use App\Models\User;
 use App\Models\UserSavedProperty;
 use Illuminate\Http\Request;
@@ -48,15 +49,21 @@ class UserSavedPropertyController extends Controller
             ], 400);
         }
 
+        $ratings = PropertyRatingAndReview::where("property_id", $request->property_id)->get();
+        $total_rating = 0;
+        foreach ($ratings as $r) {
+            $total_rating += $r->rating;
+        }
+
         $savedProperty = new UserSavedProperty;
         $savedProperty->user_id = $request->user_id;
         $savedProperty->property_id = $request->property_id;
         $savedProperty->property_code = $request->property_code;
         $savedProperty->type = $request->type;
+        $savedProperty->rating = $total_rating / count($ratings);
         $savedProperty->property_name = $request->property_name;
         $savedProperty->property_short_description = isset($request->property_short_description) ? $request->property_short_description : '';
         $savedProperty->front_image = isset($request->front_image) ? $request->front_image : '';
-        $savedProperty->rating = isset($request->rating) ? $request->rating : '';
         $savedProperty->property_posted_by = $request->property_posted_by;
 
         if (UserSavedProperty::where("property_id", $request->property_id)->where("type", $request->type)->where("user_id", $request->user_id)->count() > 0) {
@@ -140,6 +147,12 @@ class UserSavedPropertyController extends Controller
     {
         $user = User::find($id);
         $alldata = UserSavedProperty::where("user_id", $user->id)->get()->map(function ($d) {
+            $ratings = PropertyRatingAndReview::where("property_id", $d->property_id)->get();
+            $total_rating = 0;
+            foreach ($ratings as $r) {
+                $total_rating += $r->rating;
+            }
+            $d->rating = $total_rating / count($ratings);
             if (is_numeric($d->property_posted_by)) {
                 $d->property_posted_by = User::find((int)$d->property_posted_by)->first;
                 return $d;
