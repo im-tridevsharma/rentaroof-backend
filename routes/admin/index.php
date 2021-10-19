@@ -15,6 +15,7 @@ use App\Http\Controllers\api\admin\MeetingManagement;
 use App\Http\Controllers\api\admin\PageManagement;
 use App\Http\Controllers\api\admin\PropertyManagement;
 use App\Http\Controllers\api\admin\RoleManagement;
+use App\Http\Controllers\api\admin\SettingController;
 use App\Http\Controllers\api\admin\SosManagement;
 use App\Http\Controllers\api\admin\TrainingManagement;
 
@@ -59,3 +60,5 @@ Route::resource('enquiries', EnquiryManagement::class)->middleware('admin');
 Route::resource('sos', SosManagement::class)->middleware('admin');
 //manage meetings
 Route::resource('meetings', MeetingManagement::class)->middleware('admin');
+Route::post('settings', [SettingController::class, 'save_and_update'])->middleware('admin');
+Route::get('settings/{key}', [SettingController::class, 'get'])->middleware('admin');

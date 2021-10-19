@@ -55,6 +55,17 @@ class PageManagement extends Controller
         ], 404);
     }
 
+    //get page data
+    public function getPages()
+    {
+        $pages = Pages::all();
+        return response([
+            'status'    => true,
+            'message'   => 'Pages fetched successfully.',
+            'data'      => $pages
+        ], 200);
+    }
+
     /**
      * Store a newly created resource in storage.
      *

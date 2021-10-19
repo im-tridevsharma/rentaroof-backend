@@ -39,9 +39,12 @@ Route::group(['prefix' => 'auth'], function ($router) {
     Route::post('profile', [AuthController::class, 'profile']);
 });
 
+Route::get('profile/code/{code}', [AuthController::class, 'profileByCode']);
+
 Route::post('user/signup', [AuthController::class, 'signup']);
 
 Route::get('page', [PageManagement::class, 'getPage']);
+Route::get('pages', [PageManagement::class, 'getPages']);
 
 Route::get("properties/search", [PropertyController::class, 'search']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);

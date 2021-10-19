@@ -20,7 +20,7 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('jwt.verify', ['except' => ['login', 'signup']]);
+        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode']]);
     }
 
     /**
@@ -28,6 +28,16 @@ class AuthController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
+
+    public function profileByCode($code)
+    {
+        $user = User::where("system_userid", $code)->first();
+        return response([
+            'status'    => true,
+            'message'   => 'User datails fetched successfully.',
+            'data'      =>  $user->load(["address", "kyc"])
+        ], 200);
+    }
 
     public function login(Request $request)
     {
