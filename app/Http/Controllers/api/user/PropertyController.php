@@ -59,6 +59,24 @@ class PropertyController extends Controller
         ], 500);
     }
 
+    //get property by user id
+    public function property_by_user($id)
+    {
+        $user = User::find($id);
+        if ($user) {
+            $properties = Property::where("posted_by", $user->id)->where("is_approved", 1)->get();
+            return response([
+                'status'    => true,
+                'messsage'  => 'Properties fetched successfully.',
+                'data'      => $properties
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Creator not found!'
+        ], 404);
+    }
 
     //schedule appointment
     public function appointment(Request $request, $id)

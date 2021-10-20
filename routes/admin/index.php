@@ -61,4 +61,5 @@ Route::resource('sos', SosManagement::class)->middleware('admin');
 //manage meetings
 Route::resource('meetings', MeetingManagement::class)->middleware('admin');
 Route::post('settings', [SettingController::class, 'save_and_update'])->middleware('admin');
+Route::post('settings/bulk', [SettingController::class, 'save_bulk'])->middleware('admin');
 Route::get('settings/{key}', [SettingController::class, 'get'])->middleware('admin');

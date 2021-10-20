@@ -60,7 +60,7 @@ class UserSavedPropertyController extends Controller
         $savedProperty->property_id = $request->property_id;
         $savedProperty->property_code = $request->property_code;
         $savedProperty->type = $request->type;
-        $savedProperty->rating = $total_rating / count($ratings);
+        $savedProperty->rating = count($ratings) ? $total_rating / count($ratings) : 0;
         $savedProperty->property_name = $request->property_name;
         $savedProperty->property_short_description = isset($request->property_short_description) ? $request->property_short_description : '';
         $savedProperty->front_image = isset($request->front_image) ? $request->front_image : '';

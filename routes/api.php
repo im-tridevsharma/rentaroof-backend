@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\api\admin\PageManagement;
+use App\Http\Controllers\api\admin\SettingController as AdminSettingController;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\api\AuthController;
 use App\Http\Controllers\api\user\Enquiry;
+use App\Http\Controllers\api\user\IboRatingController;
 use App\Http\Controllers\api\user\MeetingController;
 use App\Http\Controllers\api\user\PropertyAddressController;
 use App\Http\Controllers\api\user\PropertyController;
@@ -40,16 +42,23 @@ Route::group(['prefix' => 'auth'], function ($router) {
 });
 
 Route::get('profile/code/{code}', [AuthController::class, 'profileByCode']);
-
 Route::post('user/signup', [AuthController::class, 'signup']);
 
 Route::get('page', [PageManagement::class, 'getPage']);
 Route::get('pages', [PageManagement::class, 'getPages']);
+Route::get('website/initials/{key}', [AdminSettingController::class, 'get']);
 
 Route::get("properties/search", [PropertyController::class, 'search']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);
 Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
 Route::resource("properties/reviews", RatingandReviewController::class);
+Route::get("properties/ibo/{id}", [PropertyController::class, 'property_by_user']);
+Route::resource('ratings/ibo', IboRatingController::class);
+Route::get("properties/landlord/{id}", [PropertyController::class, 'property_by_user']);
+Route::get('ratings/ibo/all/{id}', [IboRatingController::class, 'all']);
+Route::resource('ratings/ibo', IboRatingController::class);
+
+
 Route::group(['middleware' => 'jwt.verify'], function () {
 
     Route::get("countries", function () {
