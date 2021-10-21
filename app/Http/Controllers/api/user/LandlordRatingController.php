@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
-use App\Models\IboRating;
+use App\Models\LandlordRating;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
-class IboRatingController extends Controller
+class LandlordRatingController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -35,7 +35,7 @@ class IboRatingController extends Controller
         $validator = Validator::make($request->all(), [
             'rating' => 'required',
             'review' => 'required|string',
-            'ibo_id' => 'required'
+            'landlord_id' => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -47,10 +47,10 @@ class IboRatingController extends Controller
         }
         $user = JWTAuth::user();
 
-        $rating = $user && IboRating::where("user_id", $user->id)->count() > 0 ? IboRating::where("user_id", $user->id)->first() : new IboRating;
+        $rating = $user && LandlordRating::where("user_id", $user->id)->count() > 0 ? LandlordRating::where("user_id", $user->id)->first() : new LandlordRating;
         $rating->rating = $request->rating;
         $rating->review = $request->review;
-        $rating->ibo_id = $request->ibo_id;
+        $rating->landlord_id = $request->landlord_id;
         $rating->user_id = $user ? $user->id : 0;
         $rating->user_role = $user ? $user->role : '';
         $rating->name = $user ? $user->first . ' ' . $user->last : '';
@@ -79,7 +79,7 @@ class IboRatingController extends Controller
      */
     public function show($id)
     {
-        $rating = IboRating::find($id);
+        $rating = LandlordRating::find($id);
         if ($rating) {
             return response([
                 'status'     => true,
@@ -97,7 +97,7 @@ class IboRatingController extends Controller
     //get all rating of ibo
     public function all($id)
     {
-        $ratings = IboRating::where("ibo_id", $id)->orderBy("created_at", "desc")->get()->map(function ($r) {
+        $ratings = LandlordRating::where("landlord_id", $id)->orderBy("created_at", "desc")->get()->map(function ($r) {
             $r->user_pic = $r->user_id ? (User::find($r->user_id) ? User::find($r->user_id)->profile_pic : '') : '';
             return $r;
         });
@@ -127,7 +127,7 @@ class IboRatingController extends Controller
         $validator = Validator::make($request->all(), [
             'rating' => 'required',
             'review' => 'required|string',
-            'ibo_id' => 'required'
+            'landlord_id' => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -146,11 +146,11 @@ class IboRatingController extends Controller
             ], 401);
         }
 
-        $rating = IboRating::where("user_id", $user->id)->where("id", $id)->first();
+        $rating = LandlordRating::where("user_id", $user->id)->where("id", $id)->first();
         if ($rating) {
             $rating->rating = $request->rating;
             $rating->review = $request->review;
-            $rating->ibo_id = $request->ibo_id;
+            $rating->landlord_id = $request->landlord_id;
             $rating->user_id = $user ? $user->id : 0;
             $rating->user_role = $user ? $user->role : '';
             $rating->name = $user ? $user->first . ' ' . $user->last : '';
@@ -194,7 +194,7 @@ class IboRatingController extends Controller
             ], 404);
         }
 
-        $rating = IboRating::where("user_id", $user->id)->where("id", $id)->first();
+        $rating = LandlordRating::where("user_id", $user->id)->where("id", $id)->first();
         if ($rating) {
             $rating->delete();
             return response([
