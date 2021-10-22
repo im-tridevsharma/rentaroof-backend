@@ -57,6 +57,7 @@ Route::get('website/initials/{key}', [AdminSettingController::class, 'get']);
 Route::get("properties/search", [PropertyController::class, 'search']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);
 Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
+Route::resource("properties/reviews/all/{id}", [RatingandReviewController::class, 'all']);
 Route::resource("properties/reviews", RatingandReviewController::class);
 
 Route::get("properties/ibo/{id}", [PropertyController::class, 'property_by_user']);
@@ -77,39 +78,39 @@ Route::resource('tenant/notifications', TenantNotificationController::class);
 Route::get('ratings/tenant/all/{id}', [TenantRatingController::class, 'all']);
 Route::resource('ratings/tenant', TenantRatingController::class);
 
+Route::get("countries", function () {
+    return response([
+        'status'    => true,
+        'message'   => 'Countries fecthed successfully.',
+        'data'      => Country::all()
+    ]);
+});
+
+Route::get("states", function () {
+    return response([
+        'status'    => true,
+        'message'   => 'States fecthed successfully.',
+        'data'      => State::all()
+    ]);
+});
+
+Route::get("cities", function () {
+    return response([
+        'status'    => true,
+        'message'   => 'Cities fecthed successfully.',
+        'data'      => City::all()
+    ]);
+});
+
+Route::get("amenities", function () {
+    return response([
+        'status'    => true,
+        'message'   => 'Amenities fecthed successfully.',
+        'data'      => Amenity::all()
+    ]);
+});
+
 Route::group(['middleware' => 'jwt.verify'], function () {
-
-    Route::get("countries", function () {
-        return response([
-            'status'    => true,
-            'message'   => 'Countries fecthed successfully.',
-            'data'      => Country::all()
-        ]);
-    });
-
-    Route::get("states", function () {
-        return response([
-            'status'    => true,
-            'message'   => 'States fecthed successfully.',
-            'data'      => State::all()
-        ]);
-    });
-
-    Route::get("cities", function () {
-        return response([
-            'status'    => true,
-            'message'   => 'Cities fecthed successfully.',
-            'data'      => City::all()
-        ]);
-    });
-
-    Route::get("amenities", function () {
-        return response([
-            'status'    => true,
-            'message'   => 'Amenities fecthed successfully.',
-            'data'      => Amenity::all()
-        ]);
-    });
 
     Route::put('users/password/{id}', [UserController::class, 'password']);
     Route::get('users/search', [UserController::class, 'search']);

@@ -10,6 +10,13 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class RatingandReviewController extends Controller
 {
+    public function index()
+    {
+        return response([
+            'status'    => false,
+            'message'   => "action not allowed"
+        ]);
+    }
     //save rating and review
     public function store(Request $request)
     {
@@ -68,6 +75,24 @@ class RatingandReviewController extends Controller
         return response([
             'status'    => false,
             'message'   => 'Review not found!'
+        ], 404);
+    }
+
+    //get all reviews of a property
+    public function all($id)
+    {
+        $reviews = PropertyRatingAndReview::where("property_id", $id)->get();
+        if ($reviews) {
+            return response([
+                'status'    => true,
+                'message'   => 'Reviews fetched successfully.',
+                'data'      => $reviews
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Reviews not found!'
         ], 404);
     }
 
