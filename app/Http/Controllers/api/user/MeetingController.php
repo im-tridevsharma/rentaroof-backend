@@ -103,15 +103,18 @@ class MeetingController extends Controller
             ], 404);
         }
 
+        $user = User::find($request->user_id);
+
         //save information
         $meeting = new Meeting;
         $meeting->title = $request->title;
         $meeting->description = isset($request->description) ? $request->description : '';
         $meeting->user_id = $request->user_id;
-        $meeting->user_role = User::find($request->user_id)->role;
+        $meeting->user_role = $user ? $user->role : '';
         $meeting->property_id = $request->property_id;
-        $meeting->user_name = User::find($request->user_id)->first . ' ' . User::find($request->user_id)->last;;
-        $meeting->user_contact = User::find($request->user_id)->mobile;
+        $meeting->name = $user ? $user->first . ' ' . $user->last : $request->name;
+        $meeting->contact = $user ? $user->mobile : $request->contact;
+        $meeting->email = $user ? $user->email : $request->email;
         $meeting->start_time = !empty($request->start_time) ? date("Y-m-d H:i:s", strtotime($request->start_time)) : NULL;
         $meeting->end_time_expected = !empty($request->end_time_expected) ? date("Y-m-d H:i:s", strtotime($request->end_time_expected)) : NULL;
         $meeting->created_by_id = $user->id;
@@ -205,13 +208,15 @@ class MeetingController extends Controller
         //save information
         $meeting = Meeting::where("created_by_id", $user->id)->find($id);
         if ($meeting) {
+            $user = User::find($request->user_id);
             $meeting->title = $request->title;
             $meeting->description = isset($request->description) ? $request->description : '';
             $meeting->user_id = $request->user_id;
-            $meeting->user_role = User::find($request->user_id)->role;
+            $meeting->user_role = $user ? $user->role : '';
             $meeting->property_id = $request->property_id;
-            $meeting->user_name = User::find($request->user_id)->first . ' ' . User::find($request->user_id)->last;;
-            $meeting->user_contact = User::find($request->user_id)->mobile;
+            $meeting->name = $user ? $user->first . ' ' . $user->last : $request->name;
+            $meeting->contact = $user ? $user->mobile : $request->contact;
+            $meeting->email = $user ? $user->email : $request->email;
             $meeting->start_time = !empty($request->start_time) ? date("Y-m-d H:i:s", strtotime($request->start_time)) : NULL;
             $meeting->end_time_expected = !empty($request->end_time_expected) ? date("Y-m-d H:i:s", strtotime($request->end_time_expected)) : NULL;
             $meeting->created_by_id = $user->id;
