@@ -146,27 +146,34 @@ class UserSavedPropertyController extends Controller
     public function show($id)
     {
         $user = User::find($id);
-        $alldata = UserSavedProperty::where("user_id", $user->id)->get()->map(function ($d) {
-            $ratings = PropertyRatingAndReview::where("property_id", $d->property_id)->get();
-            $total_rating = 0;
-            foreach ($ratings as $r) {
-                $total_rating += $r->rating;
-            }
-            $d->rating = $total_rating / count($ratings);
-            if (is_numeric($d->property_posted_by)) {
-                $d->property_posted_by = User::find((int)$d->property_posted_by)->first;
-                return $d;
-            } else {
-                return $d;
-            }
-        });
-
         if ($user) {
+            $alldata = UserSavedProperty::where("user_id", $user->id)->get()->map(function ($d) {
+                $ratings = PropertyRatingAndReview::where("property_id", $d->property_id)->get();
+                $total_rating = 0;
+                foreach ($ratings as $r) {
+                    $total_rating += $r->rating;
+                }
+                $d->rating = $total_rating / count($ratings);
+                if (is_numeric($d->property_posted_by)) {
+                    $d->property_posted_by = User::find((int)$d->property_posted_by)->first;
+                    return $d;
+                } else {
+                    return $d;
+                }
+            });
+
             return response([
                 'status'    => true,
                 'message'   => 'Saved properties of user fetched successfully.',
                 'data'      => $alldata
             ], 200);
+        }
+
+        if (!$user) {
+            return response([
+                'status'    => false,
+                'message'   => 'User not found!'
+            ], 404);
         }
     }
 
