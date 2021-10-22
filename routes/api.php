@@ -57,7 +57,7 @@ Route::get('website/initials/{key}', [AdminSettingController::class, 'get']);
 Route::get("properties/search", [PropertyController::class, 'search']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);
 Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
-Route::resource("properties/reviews/all/{id}", [RatingandReviewController::class, 'all']);
+Route::get("properties/reviews/all/{id}", [RatingandReviewController::class, 'all']);
 Route::resource("properties/reviews", RatingandReviewController::class);
 
 Route::get("properties/ibo/{id}", [PropertyController::class, 'property_by_user']);
