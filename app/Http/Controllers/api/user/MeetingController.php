@@ -107,6 +107,8 @@ class MeetingController extends Controller
 
         //save information
         $meeting = new Meeting;
+
+        $meeting->create_id = 'ID-' . now();
         $meeting->title = $request->title;
         $meeting->description = isset($request->description) ? $request->description : '';
         $meeting->user_id = $request->user_id;
