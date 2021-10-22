@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserSavedProperty;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserSavedPropertyController extends Controller
 {
@@ -185,19 +186,27 @@ class UserSavedPropertyController extends Controller
      */
     public function destroy($id)
     {
-        $savedp = UserSavedProperty::find($id);
-        if ($savedp) {
-            $savedp->delete();
+        $user = JWTAuth::user();
+        if ($user) {
+            $savedp = UserSavedProperty::where("user_id", $user->id)->where("id", $id)->first();
+            if ($savedp) {
+                $savedp->delete();
+                return response([
+                    'status'    => true,
+                    'message'   => 'Deleted successfully.',
+                    'data'      => $savedp
+                ], 200);
+            }
+
             return response([
-                'status'    => true,
-                'message'   => 'Deleted successfully.',
-                'data'      => $savedp
-            ], 200);
+                'status'    => false,
+                'message'   => 'Something went wrong!',
+            ], 500);
         }
 
         return response([
             'status'    => false,
-            'message'   => 'Something went wrong!',
-        ], 500);
+            'message'   => 'User not found!',
+        ], 404);
     }
 }
