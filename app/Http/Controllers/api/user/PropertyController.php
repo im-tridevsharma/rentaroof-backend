@@ -172,11 +172,22 @@ class PropertyController extends Controller
             if ($request->has('bath') && !empty($request->bath)) {
                 $q->where("bathrooms", $request->bath);
             }
+            if ($request->has('ownership') && !empty($request->ownership)) {
+                $q->whereIn("ownership_type", explode(",", $request->ownership));
+            }
             if ($request->has('bed') && !empty($request->bed)) {
                 $q->where("bedrooms", $request->bed);
             }
+            if ($request->has('furnishing') && !empty($request->furnishing)) {
+                $q->where("furnished_status", $request->furnishing);
+            }
             if ($request->has('ptype') && !empty($request->ptype)) {
                 $q->where("type", $request->ptype);
+            }
+            if ($request->has('amenities') && !empty($request->amenities)) {
+                $a = explode(",", $request->amenities);
+                $a = implode('", "', $a);
+                $q->whereRaw('JSON_CONTAINS(amenities, \'["' . $a . '"]\')');
             }
             if ($request->has('min_price') && !empty($request->min_price)) {
                 $q->where("monthly_rent", ">=", $request->min_price);
@@ -184,13 +195,30 @@ class PropertyController extends Controller
             if ($request->has('max_price') && !empty($request->max_price)) {
                 $q->where("monthly_rent", "<=", $request->max_price);
             }
+            if ($request->has('min_size') && !empty($request->min_size)) {
+                $q->where("super_area", ">=", $request->min_size);
+            }
+            if ($request->has('max_size') && !empty($request->max_size)) {
+                $q->where("super_area", "<=", $request->max_size);
+            }
+            if ($request->has('readytomove') && $request->readytomove == 'yes') {
+                $q->where("available_immediately", 1);
+            }
             if ($request->has('available_from') && !empty($request->available_from)) {
                 $q->whereDate("available_from", ">=", date("Y-m-d", strtotime($request->available_from)));
             }
             if ($request->has('available_to') && !empty($request->available_to)) {
                 $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
             }
-        })->with("address")->get();
+        })->with("address");
+        if ($request->has("sorting")) {
+            $properties = $request->sorting == 'newest' ? $properties->orderBy("created_at", "desc") : $properties->orderBy("created_at", "asc");
+        }
+        if ($request->has("pagination") && $request->pagination === 'yes') {
+            $properties = $properties->paginate(5);
+        } else {
+            $properties = $properties->get();
+        }
 
         return response([
             'status'    => true,
