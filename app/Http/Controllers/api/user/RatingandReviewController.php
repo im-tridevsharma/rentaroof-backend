@@ -42,8 +42,8 @@ class RatingandReviewController extends Controller
         $review->description = $request->has('review') ? $request->review : '';
         $review->user_id = $user ? $user->id : NULL;
         $review->full_name = $user ? $user->first . ' ' . $user->last : 'Guest';
-        $review->email = $user ? $user->email : '';
-        $review->mobile = $user ? $user->mobile : '';
+        $review->email = $user ? (!empty($user->email) ? $user->email : '') : '';
+        $review->mobile = $user ? (!empty($user->mobile) ? $user->mobile : '') : '';
         $review->rating = $request->has('rating') ? $request->rating : 0;
 
         if ($review->save()) {

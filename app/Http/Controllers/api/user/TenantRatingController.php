@@ -54,8 +54,8 @@ class TenantRatingController extends Controller
         $rating->user_id = $user ? $user->id : 0;
         $rating->user_role = $user ? $user->role : '';
         $rating->name = $user ? $user->first . ' ' . $user->last : '';
-        $rating->email = $user ? $user->email : '';
-        $rating->contact = $user ? $user->mobile : '';
+        $rating->email = $user ? (!empty($user->email) ? $user->email : '') : '';
+        $rating->contact = $user ? (!empty($user->mobile) ? $user->mobile : '') : '';
 
         if ($rating->save()) {
             return response([

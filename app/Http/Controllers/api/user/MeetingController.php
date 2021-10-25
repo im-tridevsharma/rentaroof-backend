@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agreement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -31,8 +32,12 @@ class MeetingController extends Controller
                     $p = Property::find($m->property_id);
                     $u = User::find($m->user_id);
                     $m->property_data = $p->name . ' - ' . $p->property_code;
+                    $m->property_monthly_rent = $p->monthly_rent;
+                    $m->property_posted_by = $p->posted_by;
                     $m->front_image = $p->front_image;
                     $m->ibo = $u->first . ' ' . $u->last;
+                    $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
+                    $m->agreement = $a;
                     return $m;
                 })
             ], 200);
@@ -115,8 +120,8 @@ class MeetingController extends Controller
         $meeting->user_role = $user ? $user->role : '';
         $meeting->property_id = $request->property_id;
         $meeting->name = $user ? $user->first . ' ' . $user->last : $request->name;
-        $meeting->contact = $user ? $user->mobile : $request->contact;
-        $meeting->email = $user ? $user->email : $request->email;
+        $meeting->contact = $user ? $user->mobile : (!empty($request->contact) ? $request->contact : '');
+        $meeting->email = $user ? $user->email : (!empty($request->email) ? $request->email : '');
         $meeting->start_time = !empty($request->start_time) ? date("Y-m-d H:i:s", strtotime($request->start_time)) : NULL;
         $meeting->end_time_expected = !empty($request->end_time_expected) ? date("Y-m-d H:i:s", strtotime($request->end_time_expected)) : NULL;
         $meeting->created_by_id = $user->id;
@@ -217,8 +222,8 @@ class MeetingController extends Controller
             $meeting->user_role = $user ? $user->role : '';
             $meeting->property_id = $request->property_id;
             $meeting->name = $user ? $user->first . ' ' . $user->last : $request->name;
-            $meeting->contact = $user ? $user->mobile : $request->contact;
-            $meeting->email = $user ? $user->email : $request->email;
+            $meeting->contact = $user ? $user->mobile : (!empty($request->contact) ? $request->contact : $meeting->contact);
+            $meeting->email = $user ? $user->email : (!empty($request->email) ? $request->email : $meeting->email);
             $meeting->start_time = !empty($request->start_time) ? date("Y-m-d H:i:s", strtotime($request->start_time)) : NULL;
             $meeting->end_time_expected = !empty($request->end_time_expected) ? date("Y-m-d H:i:s", strtotime($request->end_time_expected)) : NULL;
             $meeting->created_by_id = $user->id;

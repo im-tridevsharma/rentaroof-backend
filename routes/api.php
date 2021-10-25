@@ -5,6 +5,7 @@ use App\Http\Controllers\api\admin\SettingController as AdminSettingController;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\api\AuthController;
+use App\Http\Controllers\api\user\AgreementController;
 use App\Http\Controllers\api\user\Enquiry;
 use App\Http\Controllers\api\user\IboNotificationController;
 use App\Http\Controllers\api\user\IboRatingController;
@@ -77,6 +78,8 @@ Route::get("tenant/notifications/seen/{id}", [TenantNotificationController::clas
 Route::resource('tenant/notifications', TenantNotificationController::class);
 Route::get('ratings/tenant/all/{id}', [TenantRatingController::class, 'all']);
 Route::resource('ratings/tenant', TenantRatingController::class);
+
+Route::resource('agreements', AgreementController::class);
 
 Route::get("countries", function () {
     return response([

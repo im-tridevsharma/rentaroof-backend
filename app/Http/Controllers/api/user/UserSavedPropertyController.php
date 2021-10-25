@@ -61,7 +61,7 @@ class UserSavedPropertyController extends Controller
         $savedProperty->property_id = $request->property_id;
         $savedProperty->property_code = $request->property_code;
         $savedProperty->type = $request->type;
-        $savedProperty->rating = count($ratings) ? $total_rating / count($ratings) : 0;
+        $savedProperty->rating = count($ratings) > 0 ? $total_rating / count($ratings) : 0;
         $savedProperty->property_name = $request->property_name;
         $savedProperty->property_short_description = isset($request->property_short_description) ? $request->property_short_description : '';
         $savedProperty->front_image = isset($request->front_image) ? $request->front_image : '';
@@ -154,7 +154,7 @@ class UserSavedPropertyController extends Controller
                 foreach ($ratings as $r) {
                     $total_rating += $r->rating;
                 }
-                $d->rating = $total_rating / count($ratings);
+                $d->rating = count($ratings) > 0 ? $total_rating / count($ratings) : '';
                 if (is_numeric($d->property_posted_by)) {
                     $d->property_posted_by = User::find((int)$d->property_posted_by)->first;
                     return $d;
