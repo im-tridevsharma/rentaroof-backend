@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\api\admin\AgreementManagement;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\api\admin\CountryManagement;
@@ -58,6 +59,7 @@ Route::resource('trainings', TrainingManagement::class)->middleware('admin');
 Route::resource('enquiries', EnquiryManagement::class)->middleware('admin');
 //manage sos
 Route::resource('sos', SosManagement::class)->middleware('admin');
+Route::resource('agreements', AgreementManagement::class)->middleware('admin');
 //manage meetings
 Route::resource('meetings', MeetingManagement::class)->middleware('admin');
 Route::post('settings', [SettingController::class, 'save_and_update'])->middleware('admin');

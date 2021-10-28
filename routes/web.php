@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,5 +16,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    $pdf = App::make('dompdf.wrapper');
+    $s = DB::table("settings")->where("setting_key", "agreement_template")->first();
+    $s = str_replace("[[LANDLORD_FULL_NAME]]", "Tridev Sharma", $s->setting_value);
+    $pdf->loadHTML($s);
+    return $pdf->stream();
 });
