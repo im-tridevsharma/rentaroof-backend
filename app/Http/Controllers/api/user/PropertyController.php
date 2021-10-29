@@ -169,6 +169,9 @@ class PropertyController extends Controller
                 $query->orWhere("pincode", "like", "%" . $request->search . "%");
             }
         })->where(function ($q) use ($request) {
+            if ($request->has('posted_by') && !empty($request->posted_by)) {
+                $q->where("posted_by", $request->posted_by);
+            }
             if ($request->has('bath') && !empty($request->bath)) {
                 $q->where("bathrooms", $request->bath);
             }
@@ -678,5 +681,46 @@ class PropertyController extends Controller
                 }
             }
         }
+    }
+
+    public function addPin(Request $request, $id)
+    {
+        $user = JWTAuth::user();
+        $property = Property::where("posted_by", $user ? $user->id : '')->where("id", $id)->first();
+        if ($property) {
+            $property->country_name = $request->has('full_address') ? $request->full_address : $property->country_name;
+            $property->pincode = $request->has('pincode') ? $request->pincode : $property->pincode;
+            $address = Address::find($property->address_id);
+            if ($address) {
+                $address->pincode = $request->has('pincode') ? $request->pincode : $address->pincode;
+                $address->full_address = $request->has('full_address') ? $request->full_address : $address->full_address;
+                $address->lat = $request->has('lat') ? $request->lat : $address->lat;
+                $address->long = $request->has('long') ? $request->long : $address->long;
+                $address->street_view = $request->has('street_view') ? $request->street_view : $address->street_view;
+                $address->zoom_level = $request->has('zoom_level') ? $request->zoom_level : $address->zoom_level;
+
+                if ($address->save()) {
+                    return response([
+                        'status'    => true,
+                        'message'   => 'Pinned successfully.',
+                    ], 200);
+                }
+
+                return response([
+                    'status'    => false,
+                    'message'   => 'Something went wrong',
+                ], 500);
+            }
+
+            return response([
+                'status'    => false,
+                'message'   => 'Address not found for this.'
+            ], 404);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Property not found for this.'
+        ], 404);
     }
 }

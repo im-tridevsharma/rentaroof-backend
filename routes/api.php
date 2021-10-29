@@ -139,6 +139,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post("settings/account_status/{id}", [SettingController::class, 'change_account_status']);
 
     //properties
+    Route::post("properties/pin/{id}", [PropertyController::class, 'addPin']);
     Route::post("properties/amenities", [PropertyController::class, 'amenity']);
     Route::post("properties/essentials", [PropertyController::class, 'essential']);
     Route::put("properties/essentials/{id}", [PropertyController::class, 'essentialUpdate']);
