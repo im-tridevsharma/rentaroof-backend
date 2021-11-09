@@ -56,6 +56,8 @@ Route::get('pages', [PageManagement::class, 'getPages']);
 Route::get('website/initials/{key}', [AdminSettingController::class, 'get']);
 
 Route::get("properties/search", [PropertyController::class, 'search']);
+Route::get("properties/search_by_coords", [PropertyController::class, 'search_by_coords']);
+Route::get("properties/similar/{code}/{limit}", [PropertyController::class, 'get_similar_properties']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);
 Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
 Route::get("properties/reviews/all/{id}", [RatingandReviewController::class, 'all']);

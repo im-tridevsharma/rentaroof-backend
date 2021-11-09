@@ -107,7 +107,7 @@ class PropertyController extends Controller
                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
                 + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
                 ->having('distance', '>', 20)
-                ->orderBy('distance', 'asc')
+                ->orderBy('distance', 'asc')->distinct()
                 ->where("user_id", "!=", NULL)->get();
 
             $createid = 'ID-' . time();
@@ -214,6 +214,7 @@ class PropertyController extends Controller
                 $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
             }
         })->with("address");
+
         if ($request->has("sorting")) {
             $properties = $request->sorting == 'newest' ? $properties->orderBy("created_at", "desc") : $properties->orderBy("created_at", "asc");
         }
@@ -228,6 +229,62 @@ class PropertyController extends Controller
             'message'   => 'Properties searched successfully.',
             'data'      => $properties
         ], 200);
+    }
+
+    //search_by_coords
+    public function search_by_coords(Request $request)
+    {
+        $properties = Property::where("is_approved", 1);
+        $properties->join("addresses", "addresses.id", "=", "properties.address_id");
+        $properties->where("addresses.lat", "<=", floatval($request->north));
+        $properties->where("addresses.lat", ">=", floatval($request->south));
+        $properties->where("addresses.long", "<=", floatval($request->east));
+        $properties->where("addresses.long", ">=", floatval($request->west));
+
+        if ($request->has("pagination") && $request->pagination === 'yes') {
+            $properties = $properties->paginate(5);
+        } else {
+            $properties = $properties->get();
+        }
+
+        return response([
+            'status'    => true,
+            'message'   => 'Properties searched successfully.',
+            'data'      => $properties
+        ], 200);
+    }
+
+    //get similar properties
+    public function get_similar_properties($code, $limit)
+    {
+        $property = Property::where("property_code", $code)->first();
+        if ($property) {
+            $properties = Property::where("is_approved", 1)->where(function ($query) use ($property) {
+                $query->where("bedrooms", $property->bedrooms)
+                    ->orWhere("bathrooms", $property->bathrooms)
+                    ->orWhere("floors", $property->floors)
+                    ->orWhere("furnished_status", $property->furnished_status)
+                    ->orWhere("name", "like", "%" . $property->name . "%")
+                    ->orWhere("city_name", "like", "%" . $property->city_name . "%")
+                    ->orWhere("pincode", "like", "%" . $property->pincode . "%");
+            })->where("property_code", "!=", $code)->with("address");
+            if ($limit !== 'all' && is_numeric($limit)) {
+                $properties = $properties->paginate($limit);
+            } else {
+                $properties = $properties->get();
+            }
+
+            return response([
+                'status'    => true,
+                'message'   => 'Similar Properties fetched successfully.',
+                'data'      => $properties
+            ], 200);
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Similar properties not found!'
+            ], 403);
+        }
     }
 
     /**
