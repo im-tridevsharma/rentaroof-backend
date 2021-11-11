@@ -78,6 +78,66 @@ class PropertyController extends Controller
         ], 404);
     }
 
+    //for_verification
+    public function for_verification()
+    {
+        $user = JWTAuth::user();
+
+        if ($user) {
+            $properties = DB::table('property_verifications')->where("ibo_id", $user->id)->orderBy("id", "desc")->get()->map(function ($p) {
+                $property = Property::find($p->property_id);
+                $p->property = $property;
+                $p->landlord = User::find($property->posted_by);
+                $p->address  = Address::find($property->address_id);
+                return $p;
+            });
+            return response([
+                'status'    => true,
+                'message'   => 'Properties fetched successfully.',
+                'data'      => $properties
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Unauthorized access!'
+        ], 401);
+    }
+
+    //change status
+    public function change_verification_status(Request $request, $id)
+    {
+        $is = DB::table('property_verifications')->where("id", $id)->first();
+        if ($is) {
+            $data = [
+                "is_verifiable" => !empty($request->status) ? $request->status : 0,
+                "issues_in_verification"    => !empty($request->issue) ? $request->issue : '',
+                "updated_at"    => date("Y-m-d H:i:s")
+            ];
+
+            DB::table('property_verifications')->where("id", $id)->update($data);
+
+            $returndata = DB::table('property_verifications')->where("id", $id)->first();
+            if ($returndata) {
+                $property = Property::find($returndata->property_id);
+                $returndata->property = $property;
+                $returndata->landlord = User::find($property->posted_by);
+                $returndata->address  = Address::find($property->address_id);
+            }
+
+            return response([
+                'status'    => true,
+                'message'   => 'Status updated successfully.',
+                'data'      => $returndata
+            ], 200);
+        }
+
+        return  response([
+            'status'    => false,
+            'message'   => 'Not assigned to any ibo!'
+        ], 404);
+    }
+
     //schedule appointment
     public function appointment(Request $request, $id)
     {

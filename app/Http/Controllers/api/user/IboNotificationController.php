@@ -4,6 +4,7 @@ namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
 use App\Models\IboNotification;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -42,6 +43,7 @@ class IboNotificationController extends Controller
     public function store(Request $request)
     {
         $user = JWTAuth::user();
+        $user = $user ? $user : User::find($request->user_id);
         $validator = Validator::make($request->all(), [
             'ibo_id'    => 'required',
             'type'      => 'required',

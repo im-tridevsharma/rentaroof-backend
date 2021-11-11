@@ -27,7 +27,6 @@ use App\Http\Controllers\api\user\UserSavedPropertyController;
 use App\Models\Amenity;
 use App\Models\City;
 use App\Models\Country;
-use App\Models\IboNotification;
 use App\Models\State;
 
 /*
@@ -56,6 +55,8 @@ Route::get('pages', [PageManagement::class, 'getPages']);
 Route::get('website/initials/{key}', [AdminSettingController::class, 'get']);
 
 Route::get("properties/search", [PropertyController::class, 'search']);
+Route::get("properties/for_verification", [PropertyController::class, 'for_verification'])->middleware('jwt.verify');
+Route::post("properties/change_verification_status/{id}", [PropertyController::class, 'change_verification_status'])->middleware('jwt.verify');
 Route::get("properties/search_by_coords", [PropertyController::class, 'search_by_coords']);
 Route::get("properties/similar/{code}/{limit}", [PropertyController::class, 'get_similar_properties']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);

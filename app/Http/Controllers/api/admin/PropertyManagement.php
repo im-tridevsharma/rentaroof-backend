@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use App\Models\Property;
 use App\Models\PropertyEssential;
 use App\Models\PropertyGallery;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class PropertyManagement extends Controller
@@ -50,6 +52,11 @@ class PropertyManagement extends Controller
     public function show($id)
     {
         $property = Property::find($id);
+        $pv = DB::table('property_verifications')->where("property_id", $id)->first();
+        if ($pv && $pv->ibo_id) {
+            $pv->ibo = User::find($pv->ibo_id);
+        }
+        $property->verification = $pv;
         if ($property) {
             $amenities_data = [];
             //find and merge amenities
@@ -94,6 +101,44 @@ class PropertyManagement extends Controller
                 'status'    => false,
                 'message'   => 'Something went wrong!'
             ], 500);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Property not found!'
+        ], 404);
+    }
+
+    //assign_verification
+    public function assign_verification(Request $request)
+    {
+        $property = Property::find($request->property_id);
+        if ($property) {
+
+            $data = [
+                'property_id'   => $property->id,
+                'ibo_id'        => $request->ibo_id,
+                'message'       => $request->message,
+                'created_at'    => date("Y-m-d H:i:s"),
+                'updated_at'    => date("Y-m-d H:i:s")
+            ];
+
+            $is = DB::table('property_verifications')->where("property_id", $property->id)->first();
+
+            if ($is) {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Already assigned to an ibo!',
+                ], 404);
+            }
+
+            DB::table('property_verifications')->insert($data);
+
+            return response([
+                'status'    => true,
+                'message'   => 'Assigned for verification successfully.',
+                'data'      => $data
+            ], 200);
         }
 
         return response([
