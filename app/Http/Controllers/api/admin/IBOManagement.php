@@ -50,6 +50,48 @@ class IBOManagement extends Controller
         ], 500);
     }
 
+    //ban ibo
+    public function ban($id)
+    {
+        $ibo = User::where("role", "ibo")->where("id", $id)->first();
+        if ($ibo) {
+            $ibo->account_status = "banned";
+            $ibo->save();
+
+            return response([
+                'status'    => true,
+                'message'   => "Ibo banned successfully.",
+                'data'      => $ibo->load('kyc')
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => "Ibo not found!"
+        ], 404);
+    }
+
+    //activate ibo
+    public function activate($id)
+    {
+        $ibo = User::where("role", "ibo")->where("id", $id)->first();
+        if ($ibo) {
+            $ibo->account_status = "activated";
+            $ibo->save();
+
+            return response([
+                'status'    => true,
+                'message'   => "Ibo activated successfully.",
+                'data'      => $ibo->load('kyc')
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => "Ibo not found!"
+        ], 404);
+    }
+
     /**
      * update kyc status
      */

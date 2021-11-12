@@ -51,6 +51,49 @@ class UserManagement extends Controller
         ], 500);
     }
 
+    //ban user
+    public function ban($id)
+    {
+        $user = User::where("role", "tenant")->where("id", $id)->first();
+        if ($user) {
+            $user->account_status = "banned";
+            $user->save();
+
+            return response([
+                'status'    => true,
+                'message'   => "User banned successfully.",
+                'data'      => $user->load('kyc')
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => "User not found!"
+        ], 404);
+    }
+
+    //activate user
+    public function activate($id)
+    {
+        $user = User::where("role", "tenant")->where("id", $id)->first();
+        if ($user) {
+            $user->account_status = "activated";
+            $user->save();
+
+            return response([
+                'status'    => true,
+                'message'   => "User activated successfully.",
+                'data'      => $user->load('kyc')
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => "User not found!"
+        ], 404);
+    }
+
+
     /**
      * Store a newly created resource in storage.
      *

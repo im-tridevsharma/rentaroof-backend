@@ -67,6 +67,7 @@ class PropertyManagement extends Controller
                 }
             }
             $property->amenities_data = $amenities_data;
+            $property->owner_data = User::find($property->posted_by);
 
             return response([
                 'status'    => true,

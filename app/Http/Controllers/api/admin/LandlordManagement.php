@@ -50,6 +50,50 @@ class LandlordManagement extends Controller
         ], 500);
     }
 
+
+    //ban landlord
+    public function ban($id)
+    {
+        $landlord = User::where("role", "landlord")->where("id", $id)->first();
+        if ($landlord) {
+            $landlord->account_status = "banned";
+            $landlord->save();
+
+            return response([
+                'status'    => true,
+                'message'   => "Landlord banned successfully.",
+                'data'      => $landlord->load('kyc')
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => "Landlord not found!"
+        ], 404);
+    }
+
+    //activate landlord
+    public function activate($id)
+    {
+        $landlord = User::where("role", "landlord")->where("id", $id)->first();
+        if ($landlord) {
+            $landlord->account_status = "activated";
+            $landlord->save();
+
+            return response([
+                'status'    => true,
+                'message'   => "Landlord activated successfully.",
+                'data'      => $landlord->load('kyc')
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => "Landlord not found!"
+        ], 404);
+    }
+
+
     /**
      * update kyc status
      */

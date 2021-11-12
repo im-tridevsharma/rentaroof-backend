@@ -75,6 +75,14 @@ class AuthController extends Controller
             $credentials['email'] = $request->email;
         }
 
+        $user = $isMobileUser ? User::where("mobile", $request->email)->first() : User::where("email", $request->email)->first();
+        if ($user && $user->account_status === 'banned') {
+            return response([
+                'message' => "Some errors occured.",
+                'error' => 'banned'
+            ], 400);
+        }
+
         try {
             if (!$token = JWTAuth::attempt($credentials)) {
                 return response([
