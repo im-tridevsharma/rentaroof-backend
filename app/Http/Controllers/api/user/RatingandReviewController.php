@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
+use App\Models\Property;
 use App\Models\PropertyRatingAndReview;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -20,6 +22,7 @@ class RatingandReviewController extends Controller
     //save rating and review
     public function store(Request $request)
     {
+
         $validator = Validator::make($request->all(), [
             'review'    => 'required|string|max:250',
             'rating'    => 'required',
@@ -46,18 +49,50 @@ class RatingandReviewController extends Controller
         $review->mobile = $user ? (!empty($user->mobile) ? $user->mobile : '') : '';
         $review->rating = $request->has('rating') ? $request->rating : 0;
 
-        if ($review->save()) {
-            return response([
-                'status'    => true,
-                'message'   => 'Review saved successfully.',
-                'data'      => $review
-            ], 200);
-        }
+        $is = PropertyRatingAndReview::where("property_id", $request->property_id)
+            ->where("user_id", $user ? $user->id : NULL)->first();
 
-        return response([
-            'status'    => false,
-            'message'   => 'Something went wrong!'
-        ], 500);
+        if ($is) {
+            return $this->update($request, $is->id);
+        } else {
+            if ($review->save()) {
+
+                if ($user) {
+                    //get settings for points
+                    $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
+                    $review_point = DB::table('settings')->where("setting_key", "review_point")->first()->setting_value;
+
+                    $points = floatval($point_value) * floatval($review_point);
+                    $property = Property::find($request->property_id);
+
+                    //point data
+                    $pdata = [
+                        "user_id"   => $user->id,
+                        "role"      => $user->role,
+                        "title"     => "You earned " . $review_point . " points for review property-" . $property->property_code,
+                        "point_value"   => $point_value,
+                        "points"    => $review_point,
+                        "amount_earned" => $points,
+                        "type"  => "credit",
+                        "for"  => "review",
+                        "created_at"    => date("Y-m-d H:i:s"),
+                        "updated_at"    => date("Y-m-d H:i:s"),
+                    ];
+
+                    DB::table('user_referral_points')->insert($pdata);
+                }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Review saved successfully.',
+                    'data'      => $review
+                ], 200);
+            }
+            return response([
+                'status'    => false,
+                'message'   => 'Something went wrong!'
+            ], 500);
+        }
     }
 
     //show review
@@ -115,7 +150,7 @@ class RatingandReviewController extends Controller
 
         $user = JWTAuth::user();
 
-        $review = PropertyRatingAndReview::where("user_id", JWTAuth::user() ? JWTAuth::user()->id : 0)
+        $review = PropertyRatingAndReview::where("property_id", $request->property_id)->where("user_id", JWTAuth::user() ? JWTAuth::user()->id : 0)
             ->where("id", $id)->first();
         if ($review) {
             $review->title = $request->has('title') ? $request->title : '';

@@ -9,6 +9,7 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 
 use App\Models\User;
 use Exception;
+use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
@@ -102,6 +103,7 @@ class AuthController extends Controller
         $user->save();
         $info = [
             'id'       => $user->id,
+            'system_userid' => $user->system_userid,
             'first'    => $user->first,
             'last'    => $user->last,
             'fullname' => $user->first . ' ' . $user->last,
@@ -171,6 +173,7 @@ class AuthController extends Controller
         }
         $user->role = $request->role;
         $user->password = bcrypt($request->password);
+        $user->referral_code = $request->referral_code;
         $user->system_ip = $request->ip();
 
         //generate new userid for user
@@ -179,6 +182,52 @@ class AuthController extends Controller
 
         //save user to database
         if ($user->save()) {
+
+            if ($request->referral_code) {
+                $refuser = User::where("system_userid", $request->referral_code)->first();
+                if ($refuser) {
+                    //get settings for points
+                    $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
+                    $s_point  = DB::table('settings')->where("setting_key", "referral_bonus_sender_point")->first()->setting_value;
+                    $r_point = DB::table('settings')->where("setting_key", "referral_bonus_receiver_point")->first()->setting_value;
+
+                    $spoints = floatval($s_point) * floatval($point_value);
+                    $rpoints = floatval($r_point) * floatval($point_value);
+
+                    //point data
+                    $sdata = [
+                        "user_id"   => $refuser->id,
+                        "role"      => $refuser->role,
+                        "title"     => "You earned " . $s_point . " points for referral of " . $user->first . " " . $user->last,
+                        "point_value"   => $point_value,
+                        "points"    => $s_point,
+                        "amount_earned" => $spoints,
+                        "type"  => "credit",
+                        "for"  => "referral",
+                        "created_at"    => date("Y-m-d H:i:s"),
+                        "updated_at"    => date("Y-m-d H:i:s"),
+                    ];
+
+                    DB::table('user_referral_points')->insert($sdata);
+
+                    //point data
+                    $rdata = [
+                        "user_id"   => $user->id,
+                        "role"      => $user->role,
+                        "title"     => "You earned " . $r_point . " points for referral by " . $refuser->first . " " . $refuser->last,
+                        "point_value"   => $point_value,
+                        "points"    => $r_point,
+                        "amount_earned" => $rpoints,
+                        "type"  => "credit",
+                        "for"  => "referred",
+                        "created_at"    => date("Y-m-d H:i:s"),
+                        "updated_at"    => date("Y-m-d H:i:s"),
+                    ];
+
+                    DB::table('user_referral_points')->insert($rdata);
+                }
+            }
+
             return response([
                 'status' => true,
                 'message' => 'User Registered successfully.',

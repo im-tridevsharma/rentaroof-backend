@@ -16,6 +16,7 @@ use App\Http\Controllers\api\user\PropertyAddressController;
 use App\Http\Controllers\api\user\PropertyController;
 use App\Http\Controllers\api\user\PropertyGalleryController;
 use App\Http\Controllers\api\user\RatingandReviewController;
+use App\Http\Controllers\api\user\ReferralPointController;
 use App\Http\Controllers\api\user\SaveSearches;
 use App\Http\Controllers\api\user\SettingController;
 use App\Http\Controllers\api\user\Sos;
@@ -81,6 +82,7 @@ Route::get("tenant/notifications/seen/{id}", [TenantNotificationController::clas
 Route::resource('tenant/notifications', TenantNotificationController::class);
 Route::get('ratings/tenant/all/{id}', [TenantRatingController::class, 'all']);
 Route::resource('ratings/tenant', TenantRatingController::class);
+Route::get('users/referrals', [ReferralPointController::class, 'getReferrals']);
 
 Route::resource('agreements', AgreementController::class);
 
