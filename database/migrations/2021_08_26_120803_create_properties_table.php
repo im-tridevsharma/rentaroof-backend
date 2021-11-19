@@ -55,6 +55,12 @@ class CreatePropertiesTable extends Migration
             $table->boolean('is_approved')->default(0);
             $table->timestamp('verified_at')->nullable();
             $table->timestamps();
+            $table->string('country_name')->default('');
+            $table->string('state_name')->default('');
+            $table->string('city_name')->default('');
+            $table->string('pincode')->default('');
+            $table->boolean('is_deleted')->default(0);
+            $table->string('delete_reason')->nullable();
         });
     }
 

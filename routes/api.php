@@ -12,6 +12,7 @@ use App\Http\Controllers\api\user\IboRatingController;
 use App\Http\Controllers\api\user\LandlordNotificationController;
 use App\Http\Controllers\api\user\LandlordRatingController;
 use App\Http\Controllers\api\user\MeetingController;
+use App\Http\Controllers\api\user\MessageController;
 use App\Http\Controllers\api\user\PropertyAddressController;
 use App\Http\Controllers\api\user\PropertyController;
 use App\Http\Controllers\api\user\PropertyGalleryController;
@@ -29,6 +30,7 @@ use App\Models\Amenity;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
+use Illuminate\Support\Facades\Broadcast;
 
 /*
 |--------------------------------------------------------------------------
@@ -118,8 +120,10 @@ Route::get("amenities", function () {
     ]);
 });
 
-Route::group(['middleware' => 'jwt.verify'], function () {
 
+Route::group(['middleware' => 'jwt.verify'], function () {
+    //chat message
+    Route::post('chat/messages', [MessageController::class, 'broadcast']);
     Route::put('users/password/{id}', [UserController::class, 'password']);
     Route::get('users/search', [UserController::class, 'search']);
     Route::resource('users/searches', SaveSearches::class);

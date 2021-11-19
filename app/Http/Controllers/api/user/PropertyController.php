@@ -278,6 +278,7 @@ class PropertyController extends Controller
         if ($request->has("sorting")) {
             $properties = $request->sorting == 'newest' ? $properties->orderBy("created_at", "desc") : $properties->orderBy("created_at", "asc");
         }
+
         if ($request->has("pagination") && $request->pagination === 'yes') {
             $properties = $properties->paginate(5);
         } else {
@@ -579,7 +580,7 @@ class PropertyController extends Controller
             $property->description = $request->description ? $request->description : $property->description;
             $property->maintenence_charge = $request->maintenence_charge ? $request->maintenence_charge : $property->maintenence_charge;
             $property->maintenence_duration = $request->maintenence_duration ? $request->maintenence_duration : $property->maintenence_duration;
-            $property->selling_price = $request->selling_price ? $request->selling_price : $property->selling_price;
+            $property->lease_period = $request->lease_period ? $request->lease_period : $property->lease_period;
             $property->offered_price = $request->offered_price ? $request->offered_price : $property->offered_price;
 
             try {
@@ -621,7 +622,7 @@ class PropertyController extends Controller
                 'status'    => false,
                 'message'   => 'Some errros occured.',
                 'error'     => $validator->errors()
-            ]);
+            ], 400);
         }
 
         $amenities = json_encode($request->amenities);
@@ -644,6 +645,18 @@ class PropertyController extends Controller
     //save property essential
     public function essential(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            "propertyId" => "required"
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'staus'     => false,
+                'message'   => 'Some error occured!',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
         $essential = new PropertyEssential;
         $essential->property_id = $request->propertyId;
 
@@ -673,30 +686,50 @@ class PropertyController extends Controller
     //update property essential
     public function essentialUpdate(Request $request, $id)
     {
-        $essential = PropertyEssential::find($id);
-        $essential->property_id = $request->propertyId;
+        $validator = Validator::make($request->all(), [
+            "propertyId" => "required"
+        ]);
 
-        $essential->school = isset($request->school) ? $request->school : $essential->school;
-        $essential->hospital = isset($request->hospital) ? $request->hospital : $essential->hospital;
-        $essential->airport = isset($request->airport) ? $request->airport : $essential->airport;
-        $essential->train = isset($request->train) ? $request->train : $essential->train;
-        $essential->market = isset($request->market) ? $request->market : $essential->market;
-        $essential->restaurent = isset($request->restaurent) ? $request->restaurent : $essential->restaurent;
-
-        if ($essential->save()) {
-            $p = Property::find($request->propertyId);
-            $p->property_essential_id = $essential->id;
-            $p->save();
+        if ($validator->fails()) {
             return response([
-                'status'    => true,
-                'message'   => 'Essential updated successfully.'
-            ], 200);
+                'staus'     => false,
+                'message'   => 'Some error occured!',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
+        $essential = PropertyEssential::find($id);
+
+        if ($essential) {
+            $essential->property_id = $request->propertyId;
+
+            $essential->school = isset($request->school) ? $request->school : $essential->school;
+            $essential->hospital = isset($request->hospital) ? $request->hospital : $essential->hospital;
+            $essential->airport = isset($request->airport) ? $request->airport : $essential->airport;
+            $essential->train = isset($request->train) ? $request->train : $essential->train;
+            $essential->market = isset($request->market) ? $request->market : $essential->market;
+            $essential->restaurent = isset($request->restaurent) ? $request->restaurent : $essential->restaurent;
+
+            if ($essential->save()) {
+                $p = Property::find($request->propertyId);
+                $p->property_essential_id = $essential->id;
+                $p->save();
+                return response([
+                    'status'    => true,
+                    'message'   => 'Essential updated successfully.'
+                ], 200);
+            }
+
+            return response([
+                'staus'     => false,
+                'message'   => 'Something went wrong!'
+            ], 500);
         }
 
         return response([
             'staus'     => false,
-            'message'   => 'Something went wrong!'
-        ], 500);
+            'message'   => 'Essential not found'
+        ], 404);
     }
     /**
      * Remove the specified resource from storage.
@@ -704,74 +737,80 @@ class PropertyController extends Controller
      * @param  \App\Models\Property  $property
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $property = Property::find($id);
         if ($property) {
-            //get all gallery
-            $galleries = PropertyGallery::find($property->gallery_id);
-            if ($galleries) {
-                $dir = "/uploads/property_gallery/" . $property->id;
-                //remove exterior images
-                $exterior = json_decode($galleries->exterior_view);
-                if (is_array($exterior) && count($exterior) > 0) {
-                    $this->remove_files($dir . '/exterior/', $exterior);
-                }
-                //remove living_room images
-                $living_room = json_decode($galleries->living_room);
-                if (is_array($living_room) && count($living_room) > 0) {
-                    $this->remove_files($dir . '/living_room/', $living_room);
-                }
-                //remove bedrooms images
-                $bedrooms = json_decode($galleries->bedrooms);
-                if (is_array($bedrooms) && count($bedrooms) > 0) {
-                    $this->remove_files($dir . '/bedrooms/', $bedrooms);
-                }
-                //remove bathrooms images
-                $bathrooms = json_decode($galleries->bathrooms);
-                if (is_array($bathrooms) && count($bathrooms) > 0) {
-                    $this->remove_files($dir . '/bathrooms/', $bathrooms);
-                }
-                //remove kitchen images
-                $kitchen = json_decode($galleries->kitchen);
-                if (is_array($kitchen) && count($kitchen) > 0) {
-                    $this->remove_files($dir . '/kitchen/', $kitchen);
-                }
-                //remove floor_plan images
-                $floor_plan = json_decode($galleries->floor_plan);
-                if (is_array($floor_plan) && count($floor_plan) > 0) {
-                    $this->remove_files($dir . '/floor_plan/', $floor_plan);
-                }
-                //remove master_plan images
-                $master_plan = json_decode($galleries->master_plan);
-                if (is_array($master_plan) && count($master_plan) > 0) {
-                    $this->remove_files($dir . '/master_plan/', $master_plan);
-                }
-                //remove location_map images
-                $location_map = json_decode($galleries->location_map);
-                if (is_array($location_map) && count($location_map) > 0) {
-                    $this->remove_files($dir . '/location_map/', $location_map);
+
+            if (false) {
+                //get all gallery
+                $galleries = PropertyGallery::find($property->gallery_id);
+                if ($galleries) {
+                    $dir = "/uploads/property_gallery/" . $property->id;
+                    //remove exterior images
+                    $exterior = json_decode($galleries->exterior_view);
+                    if (is_array($exterior) && count($exterior) > 0) {
+                        $this->remove_files($dir . '/exterior/', $exterior);
+                    }
+                    //remove living_room images
+                    $living_room = json_decode($galleries->living_room);
+                    if (is_array($living_room) && count($living_room) > 0) {
+                        $this->remove_files($dir . '/living_room/', $living_room);
+                    }
+                    //remove bedrooms images
+                    $bedrooms = json_decode($galleries->bedrooms);
+                    if (is_array($bedrooms) && count($bedrooms) > 0) {
+                        $this->remove_files($dir . '/bedrooms/', $bedrooms);
+                    }
+                    //remove bathrooms images
+                    $bathrooms = json_decode($galleries->bathrooms);
+                    if (is_array($bathrooms) && count($bathrooms) > 0) {
+                        $this->remove_files($dir . '/bathrooms/', $bathrooms);
+                    }
+                    //remove kitchen images
+                    $kitchen = json_decode($galleries->kitchen);
+                    if (is_array($kitchen) && count($kitchen) > 0) {
+                        $this->remove_files($dir . '/kitchen/', $kitchen);
+                    }
+                    //remove floor_plan images
+                    $floor_plan = json_decode($galleries->floor_plan);
+                    if (is_array($floor_plan) && count($floor_plan) > 0) {
+                        $this->remove_files($dir . '/floor_plan/', $floor_plan);
+                    }
+                    //remove master_plan images
+                    $master_plan = json_decode($galleries->master_plan);
+                    if (is_array($master_plan) && count($master_plan) > 0) {
+                        $this->remove_files($dir . '/master_plan/', $master_plan);
+                    }
+                    //remove location_map images
+                    $location_map = json_decode($galleries->location_map);
+                    if (is_array($location_map) && count($location_map) > 0) {
+                        $this->remove_files($dir . '/location_map/', $location_map);
+                    }
+
+                    $galleries->delete();
                 }
 
-                $galleries->delete();
+                //remove address
+                $address = Address::find($property->address_id);
+                if ($address) {
+                    $address->delete();
+                }
+
+                //remove essentials
+                $essentials = PropertyEssential::find($property->property_essential_id);
+                if ($essentials) {
+                    $essentials->delete();
+                }
             }
 
-            //remove address
-            $address = Address::find($property->address_id);
-            if ($address) {
-                $address->delete();
-            }
+            $property->is_deleted = 1;
+            $property->delete_reason = $request->filled('delete_reason') ? $request->delete_reason : '';
 
-            //remove essentials
-            $essentials = PropertyEssential::find($property->property_essential_id);
-            if ($essentials) {
-                $essentials->delete();
-            }
-
-            if ($property->delete()) {
+            if ($property->save()) {
                 return response([
                     'status'    => true,
-                    'message'   => 'Property deleted successfully.',
+                    'message'   => 'Property delete request sent successfully.',
                     'data'      => $property
                 ], 200);
             }
@@ -803,41 +842,48 @@ class PropertyController extends Controller
     public function addPin(Request $request, $id)
     {
         $user = JWTAuth::user();
-        $property = Property::where("posted_by", $user ? $user->id : '')->where("id", $id)->first();
-        if ($property) {
-            $property->country_name = $request->has('full_address') ? $request->full_address : $property->country_name;
-            $property->pincode = $request->has('pincode') ? $request->pincode : $property->pincode;
-            $address = Address::find($property->address_id);
-            if ($address) {
-                $address->pincode = $request->has('pincode') ? $request->pincode : $address->pincode;
-                $address->full_address = $request->has('full_address') ? $request->full_address : $address->full_address;
-                $address->lat = $request->has('lat') ? $request->lat : $address->lat;
-                $address->long = $request->has('long') ? $request->long : $address->long;
-                $address->street_view = $request->has('street_view') ? $request->street_view : $address->street_view;
-                $address->zoom_level = $request->has('zoom_level') ? $request->zoom_level : $address->zoom_level;
+        if ($user) {
+            $property = Property::where("posted_by", $user ? $user->id : '')->where("id", $id)->first();
+            if ($property) {
+                $property->country_name = $request->has('full_address') ? $request->full_address : $property->country_name;
+                $property->pincode = $request->has('pincode') ? $request->pincode : $property->pincode;
+                $address = Address::find($property->address_id);
+                if ($address) {
+                    $address->pincode = $request->has('pincode') ? $request->pincode : $address->pincode;
+                    $address->full_address = $request->has('full_address') ? $request->full_address : $address->full_address;
+                    $address->lat = $request->has('lat') ? $request->lat : $address->lat;
+                    $address->long = $request->has('long') ? $request->long : $address->long;
+                    $address->street_view = $request->has('street_view') ? $request->street_view : $address->street_view;
+                    $address->zoom_level = $request->has('zoom_level') ? $request->zoom_level : $address->zoom_level;
 
-                if ($address->save()) {
+                    if ($address->save()) {
+                        return response([
+                            'status'    => true,
+                            'message'   => 'Pinned successfully.',
+                        ], 200);
+                    }
+
                     return response([
-                        'status'    => true,
-                        'message'   => 'Pinned successfully.',
-                    ], 200);
+                        'status'    => false,
+                        'message'   => 'Something went wrong',
+                    ], 500);
                 }
 
                 return response([
                     'status'    => false,
-                    'message'   => 'Something went wrong',
-                ], 500);
+                    'message'   => 'Address not found for this.'
+                ], 404);
             }
 
             return response([
                 'status'    => false,
-                'message'   => 'Address not found for this.'
+                'message'   => 'Property not found for this.'
             ], 404);
         }
 
         return response([
             'status'    => false,
-            'message'   => 'Property not found for this.'
-        ], 404);
+            'message'   => 'Unauthorized!'
+        ], 401);
     }
 }

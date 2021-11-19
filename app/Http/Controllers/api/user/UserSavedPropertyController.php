@@ -154,7 +154,7 @@ class UserSavedPropertyController extends Controller
                 foreach ($ratings as $r) {
                     $total_rating += $r->rating;
                 }
-                $d->rating = count($ratings) > 0 ? $total_rating / count($ratings) : '';
+                $d->rating = count($ratings) > 0 ? number_format($total_rating / count($ratings), 1, '.') : "0.0";
                 if (is_numeric($d->property_posted_by)) {
                     $d->property_posted_by = User::find((int)$d->property_posted_by)->first;
                     return $d;

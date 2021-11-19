@@ -23,6 +23,7 @@ class CreatePropertyEssentialsTable extends Migration
             $table->string('train')->default('');
             $table->string('market')->default('');
             $table->string('restaurent')->default('');
+            $table->json('custom');
             $table->timestamps();
         });
     }

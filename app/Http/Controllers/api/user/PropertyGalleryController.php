@@ -33,6 +33,7 @@ class PropertyGalleryController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'propertyId' => 'required',
             'exterior.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
             'living_room.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
             'bedrooms.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',

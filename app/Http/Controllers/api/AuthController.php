@@ -175,6 +175,7 @@ class AuthController extends Controller
         $user->password = bcrypt($request->password);
         $user->referral_code = $request->referral_code;
         $user->system_ip = $request->ip();
+        $user->category = $request->filled('category') ? $request->category : NULL;
 
         //generate new userid for user
         $cid = ["tenant" => "UID-0", "ibo" => "IID-0", "landlord" => "LID-0"];

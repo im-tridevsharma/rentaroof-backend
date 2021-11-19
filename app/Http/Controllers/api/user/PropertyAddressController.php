@@ -35,6 +35,7 @@ class PropertyAddressController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'propertyId' => 'required',
             'lattitude' => 'required',
             'longitude' => 'required',
             'pincode'   => 'required|max:6|min:6'
@@ -118,6 +119,7 @@ class PropertyAddressController extends Controller
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
+            'propertyId' => 'required',
             'lattitude' => 'required',
             'longitude' => 'required',
             'pincode'   => 'required|max:6|min:6'
