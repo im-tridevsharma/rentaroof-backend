@@ -645,6 +645,8 @@ class PropertyController extends Controller
     //save property essential
     public function essential(Request $request)
     {
+
+
         $validator = Validator::make($request->all(), [
             "propertyId" => "required"
         ]);
@@ -657,6 +659,14 @@ class PropertyController extends Controller
             ], 400);
         }
 
+        $customs = [];
+
+        if ($request->filled('name') && is_array($request->name)) {
+            for ($i = 0; $i < count($request->name); $i++) {
+                $customs[$request->name[$i]] = $request->value[$i];
+            }
+        }
+
         $essential = new PropertyEssential;
         $essential->property_id = $request->propertyId;
 
@@ -666,6 +676,7 @@ class PropertyController extends Controller
         $essential->train = isset($request->train) ? $request->train : '';
         $essential->market = isset($request->market) ? $request->market : '';
         $essential->restaurent = isset($request->restaurent) ? $request->restaurent : '';
+        $essential->customs = json_encode($customs);
 
         if ($essential->save()) {
             $p = Property::find($request->propertyId);
@@ -698,6 +709,14 @@ class PropertyController extends Controller
             ], 400);
         }
 
+        $customs = [];
+
+        if ($request->filled('name') && is_array($request->name)) {
+            for ($i = 0; $i < count($request->name); $i++) {
+                $customs[$request->name[$i]] = $request->value[$i];
+            }
+        }
+
         $essential = PropertyEssential::find($id);
 
         if ($essential) {
@@ -709,6 +728,7 @@ class PropertyController extends Controller
             $essential->train = isset($request->train) ? $request->train : $essential->train;
             $essential->market = isset($request->market) ? $request->market : $essential->market;
             $essential->restaurent = isset($request->restaurent) ? $request->restaurent : $essential->restaurent;
+            $essential->customs = json_encode($customs);
 
             if ($essential->save()) {
                 $p = Property::find($request->propertyId);

@@ -52,6 +52,7 @@ Route::resource('landlords', LandlordManagement::class)->middleware('admin');
 Route::resource('amenities', AmenityManagement::class)->middleware('admin');
 //manage properties
 Route::post('properties/verification/{id}', [PropertyManagement::class, 'verification'])->middleware('admin');
+Route::get('properties/reject_delete_request/{id}', [PropertyManagement::class, 'reject_delete_request'])->middleware('admin');
 Route::post('properties/assign_verification', [PropertyManagement::class, 'assign_verification'])->middleware('admin');
 Route::resource('properties', PropertyManagement::class)->middleware('admin');
 //manage pages

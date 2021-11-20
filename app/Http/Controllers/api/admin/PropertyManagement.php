@@ -110,6 +110,28 @@ class PropertyManagement extends Controller
         ], 404);
     }
 
+    //reject_delete_request
+    public function reject_delete_request($id)
+    {
+        $property = Property::find($id);
+        if ($property) {
+            $property->is_deleted = 0;
+            $property->delete_reason = '';
+
+            $property->save();
+            return response([
+                'status'    => true,
+                'message'   => 'Property delete request rejected successfully.',
+                'data'      => $property
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Property not found!'
+        ], 404);
+    }
+
     //assign_verification
     public function assign_verification(Request $request)
     {
