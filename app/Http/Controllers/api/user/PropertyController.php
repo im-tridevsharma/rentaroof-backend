@@ -392,6 +392,12 @@ class PropertyController extends Controller
             $property->bedrooms = $request->custom_bedrooms;
         }
 
+        if (isset($request->offered_price) && !empty($request->offered_price)) {
+            $property->offered_price = $request->offered_price;
+        } else {
+            $property->offered_price = 0.0;
+        }
+
         if (isset($request->custom_bathrooms) && !empty($request->custom_bathrooms)) {
             $property->bathrooms = $request->custom_bathrooms;
         }
@@ -410,7 +416,6 @@ class PropertyController extends Controller
 
         $property->description = $request->description ? $request->description : '';
 
-        $property->address_id = NULL;
         $property->front_image = '';
         $property->posted_by = JWTAuth::user()->id;
 

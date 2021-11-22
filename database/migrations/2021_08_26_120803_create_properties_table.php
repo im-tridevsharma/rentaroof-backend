@@ -48,9 +48,7 @@ class CreatePropertiesTable extends Migration
             $table->unsignedBigInteger('posted_by');
             $table->json('amenities')->nullable();
             $table->unsignedBigInteger('gallery_id')->nullable();
-            $table->foreign('gallery_id')->references('id')->on('property_galleries')->onDelete('cascade');
             $table->unsignedBigInteger('property_essential_id')->nullable();
-            $table->foreign('property_essential_id')->references('id')->on('property_essentials')->onDelete('cascade');
             $table->string('front_image');
             $table->boolean('is_approved')->default(0);
             $table->timestamp('verified_at')->nullable();

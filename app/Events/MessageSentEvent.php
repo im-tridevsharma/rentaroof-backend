@@ -10,7 +10,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NewChatMessage
+class MessageSentEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -21,12 +21,10 @@ class NewChatMessage
      */
 
     public $message;
-    public $user;
 
-    public function __construct($message, $user)
+    public function __construct($message)
     {
         $this->message = $message;
-        $this->user = $user;
     }
 
     /**
@@ -36,6 +34,6 @@ class NewChatMessage
      */
     public function broadcastOn()
     {
-        return new PresenceChannel('chat');
+        return [new PrivateChannel('conversation.' . $this->message->conversation_id), new PresenceChannel('chat-screen')];
     }
 }

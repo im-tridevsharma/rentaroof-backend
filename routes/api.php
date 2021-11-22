@@ -6,13 +6,13 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\api\AuthController;
 use App\Http\Controllers\api\user\AgreementController;
+use App\Http\Controllers\api\user\chat\ConversationController;
 use App\Http\Controllers\api\user\Enquiry;
 use App\Http\Controllers\api\user\IboNotificationController;
 use App\Http\Controllers\api\user\IboRatingController;
 use App\Http\Controllers\api\user\LandlordNotificationController;
 use App\Http\Controllers\api\user\LandlordRatingController;
 use App\Http\Controllers\api\user\MeetingController;
-use App\Http\Controllers\api\user\MessageController;
 use App\Http\Controllers\api\user\PropertyAddressController;
 use App\Http\Controllers\api\user\PropertyController;
 use App\Http\Controllers\api\user\PropertyGalleryController;
@@ -123,7 +123,12 @@ Route::get("amenities", function () {
 
 Route::group(['middleware' => 'jwt.verify'], function () {
     //chat message
-    Route::post('chat/messages', [MessageController::class, 'broadcast']);
+    Route::get('chat/conversations', [ConversationController::class, 'index']);
+    Route::post('chat/conversations', [ConversationController::class, 'store']);
+    Route::delete('chat/conversations/{id}', [ConversationController::class, 'destroy']);
+    Route::get('chat/messages/{conversationId}', [ConversationController::class, 'getMessages']);
+    Route::post('chat/messages', [ConversationController::class, 'sendMessage']);
+
     Route::put('users/password/{id}', [UserController::class, 'password']);
     Route::get('users/search', [UserController::class, 'search']);
     Route::resource('users/searches', SaveSearches::class);

@@ -37,6 +37,12 @@ class User extends Authenticatable implements JWTSubject
         return [];
     }
 
+    //conversation
+    public function conversations()
+    {
+        return $this->hasMany('App\Models\Conversation', 'sender_id');
+    }
+
     //user has kyc details
     public function kyc()
     {
