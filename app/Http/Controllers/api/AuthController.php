@@ -33,10 +33,14 @@ class AuthController extends Controller
     public function profileByCode($code)
     {
         $user = User::where("system_userid", $code)->first();
+        $load = ['address'];
+        if ($user->role !== 'tenant') {
+            array_push($load, 'kyc');
+        }
         return response([
             'status'    => true,
             'message'   => 'User datails fetched successfully.',
-            'data'      =>  $user->load(["address", "kyc"])
+            'data'      =>  $user->load($load)
         ], 200);
     }
 
