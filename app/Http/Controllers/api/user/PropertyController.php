@@ -86,10 +86,12 @@ class PropertyController extends Controller
         if ($user) {
             $properties = DB::table('property_verifications')->where("ibo_id", $user->id)->orderBy("id", "desc")->get()->map(function ($p) {
                 $property = Property::find($p->property_id);
-                $p->property = $property;
-                $p->landlord = User::find($property->posted_by);
-                $p->address  = Address::find($property->address_id);
-                return $p;
+                if ($property) {
+                    $p->property = $property;
+                    $p->landlord = User::find($property->posted_by);
+                    $p->address  = Address::find($property->address_id);
+                    return $p;
+                }
             });
             return response([
                 'status'    => true,
