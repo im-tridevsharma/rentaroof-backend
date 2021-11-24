@@ -112,6 +112,19 @@ class UserController extends Controller
             }
         }
 
+        $signature_url = '';
+        if ($request->hasFile('signature')) {
+            $upload_dir = "/uploads/users/signature";
+            $name = Storage::disk('digitalocean')->put($upload_dir, $request->file('signature'), 'public');
+            $signature_url = Storage::disk('digitalocean')->url($name);
+
+            //remove old image
+            $oldimg = $user->signature;
+            if (Storage::disk('digitalocean')->exists($upload_dir . '/' . basename($oldimg))) {
+                Storage::disk('digitalocean')->delete($upload_dir . '/' . basename($oldimg));
+            }
+        }
+
         if ($user) {
             $user->first = $request->first;
             $user->last  = isset($request->last) ? $request->last : '';
@@ -124,6 +137,7 @@ class UserController extends Controller
             $user->username = isset($request->username) ? $request->username : NULL;
             $user->dob = !empty($request->dob) ? date("Y-m-d", strtotime($request->dob)) : NULL;
             $user->profile_pic = !empty($profile_pic_url) ? $profile_pic_url : $user->profile_pic;
+            $user->signature = !empty($signature_url) ? $signature_url : $user->signature;
 
             if ($user->save()) {
                 //save address

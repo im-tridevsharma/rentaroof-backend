@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use PDF;
 
 class AgreementController extends Controller
 {
@@ -133,6 +134,9 @@ class AgreementController extends Controller
                 $template = str_replace("[[LANDLORD_FULL_NAME]]", $landlord->first . ' ' . $landlord->last, $template);
                 $template = str_replace("[[LANDLORD_EMAIL]]", $landlord->email, $template);
                 $template = str_replace("[[LANDLORD_MOBILE]]", $landlord->mobile, $template);
+                if (!empty($tenant->signature)) {
+                    $template = str_replace("[[LANDLORD_SIGNATURE]]", '<img src="' . $this->base64($landlord->signature) . 'width="100" height="100"/>', $template);
+                }
                 $template = str_replace("[[LANDLORD_FULL_ADDRESS]]", $landlord->address ? $landlord->address->full_address : '', $template);
             }
 
@@ -151,6 +155,9 @@ class AgreementController extends Controller
                 $template = str_replace("[[TENANT_FULL_NAME]]", $tenant->first . ' ' . $tenant->last, $template);
                 $template = str_replace("[[TENANT_MOBILE]]", $tenant->email, $template);
                 $template = str_replace("[[TENANT_EMAIL]]", $tenant->mobile, $template);
+                if (!empty($tenant->signature)) {
+                    $template = str_replace("[[TENANT_SIGNATURE]]", '<img src="' . $this->base64($tenant->signature) . 'width="100" height="100"/>', $template);
+                }
                 $template = str_replace("[[TENANT_FULL_ADDRESS]]", $tenant->address ? $tenant->address->full_address : '', $template);
             }
 
@@ -171,6 +178,7 @@ class AgreementController extends Controller
             $template = str_replace("[[NEXT_DUE]]", date("d-m-Y", strtotime($agreement->next_due)), $template);
 
             $pdf->loadHTML($template)->save(public_path('temp/temp.pdf'));
+
             $upload_dir = '/uploads/agreements';
             $name = Storage::disk('digitalocean')->put($upload_dir, new File(public_path('temp/temp.pdf')), 'public');
             $url = Storage::disk('digitalocean')->url($name);
@@ -183,6 +191,15 @@ class AgreementController extends Controller
         }
 
         return '';
+    }
+
+    //getbase64
+    public function base64($url)
+    {
+        $image = file_get_contents($url);
+        if ($image !== false) {
+            return 'data:image/jpg;base64,' . base64_encode($image);
+        }
     }
 
     /**
