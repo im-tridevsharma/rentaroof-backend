@@ -12,6 +12,37 @@ use Illuminate\Support\Facades\Validator;
 class SettingController extends Controller
 {
 
+    //update_template
+    public function update_template(Request $request)
+    {
+        $validator  = Validator::make($request->all(), [
+            'setting_key'   => 'required|string',
+            'setting_value' => 'required'
+        ]);
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'Some errors occured.',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
+        $setting = DB::table('settings')->where("setting_key", $request->setting_key)->first();
+        if ($setting) {
+            //update
+            DB::table('settings')->where("setting_key", $request->setting_key)
+                ->update(["setting_value" => $request->setting_value]);
+        } else {
+            //save
+            DB::table('settings')
+                ->insert(["setting_key" => $request->setting_key, "setting_value" => $request->setting_value]);
+        }
+
+        return response([
+            'status'    => true,
+            'message'   => 'Settings updated successfully.',
+        ], 200);
+    }
 
     //get settings
     public function get($id)

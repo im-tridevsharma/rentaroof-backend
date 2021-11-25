@@ -29,6 +29,7 @@ use App\Http\Controllers\api\user\UserSavedPropertyController;
 use App\Models\Amenity;
 use App\Models\City;
 use App\Models\Country;
+use App\Models\Preference;
 use App\Models\State;
 use Illuminate\Support\Facades\Broadcast;
 
@@ -120,6 +121,13 @@ Route::get("amenities", function () {
     ]);
 });
 
+Route::get("preferences", function () {
+    return response([
+        'status'    => true,
+        'message'   => 'Preferences fecthed successfully.',
+        'data'      => Preference::all()
+    ]);
+});
 
 Route::group(['middleware' => 'jwt.verify'], function () {
     //chat message
@@ -148,10 +156,10 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::get("trainings/pdfs/{id}", [TrainingController::class, 'pdfs']);
 
     //settings
+    Route::post('settings/template', [SettingController::class, 'update_template']);
     Route::get("settings/{id}", [SettingController::class, 'get']);
     Route::post("settings/{id}", [SettingController::class, 'set']);
     Route::post("settings/account_status/{id}", [SettingController::class, 'change_account_status']);
-
     //properties
     Route::post("properties/pin/{id}", [PropertyController::class, 'addPin']);
     Route::post("properties/amenities", [PropertyController::class, 'amenity']);

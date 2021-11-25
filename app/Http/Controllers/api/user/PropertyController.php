@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Amenity;
 use App\Models\Meeting;
+use App\Models\Preference;
 use App\Models\Property;
 use App\Models\PropertyEssential;
 use App\Models\PropertyGallery;
@@ -458,12 +459,19 @@ class PropertyController extends Controller
         }
         if ($property) {
             $amenities_data = [];
+            $preferences_data = [];
             //find and merge amenities
             $amenities = json_decode($property->amenities);
+            $preferences = json_decode($property->preferences);
             foreach ($amenities as $a) {
                 array_push($amenities_data, Amenity::find($a));
             }
+            foreach ($preferences as $p) {
+                array_push($preferences_data, Preference::find($p));
+            }
             $property->amenities_data = $amenities_data;
+            $property->preferences_data = $preferences_data;
+
             $property->posted_by_data = User::find($property->posted_by)->load("address");
 
             return response([
@@ -485,12 +493,19 @@ class PropertyController extends Controller
 
         if ($property) {
             $amenities_data = [];
+            $preferences_data = [];
             //find and merge amenities
             $amenities = json_decode($property->amenities);
+            $preferences = json_decode($property->preferences);
             foreach ($amenities as $a) {
                 array_push($amenities_data, Amenity::find($a));
             }
+            foreach ($preferences as $p) {
+                array_push($preferences_data, Preference::find($p));
+            }
             $property->amenities_data = $amenities_data;
+            $property->preferences_data = $preferences_data;
+
             $property->posted_by_data = User::find($property->posted_by)->load("address");
 
             return response([
@@ -633,13 +648,15 @@ class PropertyController extends Controller
         }
 
         $amenities = json_encode($request->amenities);
+        $preferences = json_encode($request->preferences);
         $p = Property::find($request->propertyId);
         $p->amenities = $amenities;
+        $p->preferences = $preferences;
 
         if ($p->save()) {
             return response([
                 'status'    => true,
-                'message'   => 'Amenities saved successfully.'
+                'message'   => 'Amenities and Preferences saved successfully.'
             ], 200);
         }
 
@@ -652,8 +669,6 @@ class PropertyController extends Controller
     //save property essential
     public function essential(Request $request)
     {
-
-
         $validator = Validator::make($request->all(), [
             "propertyId" => "required"
         ]);

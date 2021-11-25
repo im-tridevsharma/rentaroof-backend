@@ -14,6 +14,7 @@ use App\Http\Controllers\api\admin\EmployeeManagement;
 use App\Http\Controllers\api\admin\EnquiryManagement;
 use App\Http\Controllers\api\admin\MeetingManagement;
 use App\Http\Controllers\api\admin\PageManagement;
+use App\Http\Controllers\api\admin\PreferenceManagement;
 use App\Http\Controllers\api\admin\PropertyManagement;
 use App\Http\Controllers\api\admin\RoleManagement;
 use App\Http\Controllers\api\admin\SettingController;
@@ -50,6 +51,8 @@ Route::post('landlords/kyc/verification/{id}', [LandlordManagement::class, 'veri
 Route::resource('landlords', LandlordManagement::class)->middleware('admin');
 //manage amenities
 Route::resource('amenities', AmenityManagement::class)->middleware('admin');
+//manage preferences
+Route::resource('preferences', PreferenceManagement::class)->middleware('admin');
 //manage properties
 Route::post('properties/verification/{id}', [PropertyManagement::class, 'verification'])->middleware('admin');
 Route::get('properties/reject_delete_request/{id}', [PropertyManagement::class, 'reject_delete_request'])->middleware('admin');
