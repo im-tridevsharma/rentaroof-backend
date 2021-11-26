@@ -463,11 +463,15 @@ class PropertyController extends Controller
             //find and merge amenities
             $amenities = json_decode($property->amenities);
             $preferences = json_decode($property->preferences);
-            foreach ($amenities as $a) {
-                array_push($amenities_data, Amenity::find($a));
+            if (is_array($amenities)) {
+                foreach ($amenities as $a) {
+                    array_push($amenities_data, Amenity::find($a));
+                }
             }
-            foreach ($preferences as $p) {
-                array_push($preferences_data, Preference::find($p));
+            if (is_array($preferences)) {
+                foreach ($preferences as $p) {
+                    array_push($preferences_data, Preference::find($p));
+                }
             }
             $property->amenities_data = $amenities_data;
             $property->preferences_data = $preferences_data;
@@ -497,11 +501,15 @@ class PropertyController extends Controller
             //find and merge amenities
             $amenities = json_decode($property->amenities);
             $preferences = json_decode($property->preferences);
-            foreach ($amenities as $a) {
-                array_push($amenities_data, Amenity::find($a));
+            if (is_array($amenities)) {
+                foreach ($amenities as $a) {
+                    array_push($amenities_data, Amenity::find($a));
+                }
             }
-            foreach ($preferences as $p) {
-                array_push($preferences_data, Preference::find($p));
+            if (is_array($preferences)) {
+                foreach ($preferences as $p) {
+                    array_push($preferences_data, Preference::find($p));
+                }
             }
             $property->amenities_data = $amenities_data;
             $property->preferences_data = $preferences_data;

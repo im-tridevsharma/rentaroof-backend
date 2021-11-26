@@ -144,11 +144,15 @@ class UserSavedPropertyController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $user = User::find($id);
         if ($user) {
-            $alldata = UserSavedProperty::where("user_id", $user->id)->get()->map(function ($d) {
+            $alldata = UserSavedProperty::where("user_id", $user->id);
+            if ($request->filled('type')) {
+                $alldata->where("type", $request->type);
+            }
+            $alldata->get()->map(function ($d) {
                 $ratings = PropertyRatingAndReview::where("property_id", $d->property_id)->get();
                 $total_rating = 0;
                 foreach ($ratings as $r) {
