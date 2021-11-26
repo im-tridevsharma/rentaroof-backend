@@ -22,7 +22,7 @@ class MeetingManagement extends Controller
                 'status'    => true,
                 'message'   => 'Meetings fetched successfully.',
                 'data'      => $meetings->map(function ($u) {
-                    $u->property_id = Property::find($u->property_id)->property_code;
+                    $u->property_id = Property::find($u->property_id) ? Property::find($u->property_id)->property_code : 0;
                     $u->user_id = User::find($u->user_id)->first;
                     return $u;
                 })

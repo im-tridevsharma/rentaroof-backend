@@ -291,9 +291,16 @@ class UserManagement extends Controller
         if ($user) {
             //remove files from the server
             $upload_dir = "/uploads/users/profile_pic";
+            $upload_dir2 = "/uploads/users/signature";
+
             $oldimg = $user->profile_pic;
             if (Storage::disk('digitalocean')->exists($upload_dir . '/' . basename($oldimg))) {
                 Storage::disk('digitalocean')->delete($upload_dir . '/' . basename($oldimg));
+            }
+
+            $oldimg2 = $user->signature;
+            if (Storage::disk('digitalocean')->exists($upload_dir2 . '/' . basename($oldimg2))) {
+                Storage::disk('digitalocean')->delete($upload_dir2 . '/' . basename($oldimg2));
             }
 
             //remove address if not removed automatically

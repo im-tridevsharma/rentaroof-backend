@@ -131,6 +131,7 @@ Route::get("preferences", function () {
 
 Route::group(['middleware' => 'jwt.verify'], function () {
     //chat message
+    Route::get('chat/users_for_conversation', [ConversationController::class, 'users_for_conversation']);
     Route::get('chat/conversations', [ConversationController::class, 'index']);
     Route::post('chat/conversations', [ConversationController::class, 'store']);
     Route::delete('chat/conversations/{id}', [ConversationController::class, 'destroy']);

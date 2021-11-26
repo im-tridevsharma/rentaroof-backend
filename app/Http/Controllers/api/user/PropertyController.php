@@ -422,6 +422,10 @@ class PropertyController extends Controller
         $property->front_image = '';
         $property->posted_by = JWTAuth::user()->id;
 
+        if (JWTAuth::user() && JWTAuth::user()->role === 'landlord') {
+            $property->landlord = JWTAuth::user()->id;
+        }
+
         try {
             if ($property->save()) {
                 return response([
@@ -612,6 +616,10 @@ class PropertyController extends Controller
             $property->maintenence_duration = $request->maintenence_duration ? $request->maintenence_duration : $property->maintenence_duration;
             $property->lease_period = $request->lease_period ? $request->lease_period : $property->lease_period;
             $property->offered_price = $request->offered_price ? $request->offered_price : $property->offered_price;
+
+            if (JWTAuth::user() && JWTAuth::user()->role === 'landlord') {
+                $property->landlord = JWTAuth::user()->id;
+            }
 
             try {
                 if ($property->save()) {

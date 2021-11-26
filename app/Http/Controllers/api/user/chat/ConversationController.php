@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api\user\chat;
 
+use App\Events\ConversationCreated;
 use App\Events\MessageSentEvent;
 use App\Http\Controllers\Controller;
 use App\Models\ChatMessage;
@@ -40,6 +41,9 @@ class ConversationController extends Controller
             'message'   => 'Unauthorized!'
         ], 401);
     }
+
+
+
     //create new conversation
     public function store(Request $request)
     {
@@ -72,6 +76,15 @@ class ConversationController extends Controller
         $conversation->receiver_id = $request->receiver_id;
 
         if ($conversation->save()) {
+
+            $receiver = User::find($conversation->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in']);
+            $sender = User::find($conversation->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in']);
+            $last_message = ChatMessage::where("conversation_id", $conversation->id)->orderBy('created_at', 'desc')->first();
+            $conversation->receiver = $receiver;
+            $conversation->sender = $sender;
+            $conversation->last_message = $last_message;
+
+            event(new ConversationCreated($conversation));
             return response([
                 'status'    => true,
                 'message'   => 'Conversation created successfully.',
@@ -165,5 +178,18 @@ class ConversationController extends Controller
             'status'    => false,
             'message'   => 'Conversation not found.'
         ], 422);
+    }
+
+    //users_for_conversation
+
+    public function users_for_conversation()
+    {
+        $users = User::select("first", "last", 'id', 'role')->where("id", "!=", JWTAuth::user()->id)
+            ->where("role", "!=", "admin")->where("account_status", "activated")->get();
+        return response([
+            'status'    => true,
+            'message'   => 'Users fetched for conversation.',
+            'data'      => $users
+        ], 200);
     }
 }

@@ -152,13 +152,13 @@ class UserSavedPropertyController extends Controller
             if ($request->filled('type')) {
                 $alldata->where("type", $request->type);
             }
-            $alldata->get()->map(function ($d) {
+            $alldata = $alldata->get()->map(function ($d) {
                 $ratings = PropertyRatingAndReview::where("property_id", $d->property_id)->get();
                 $total_rating = 0;
                 foreach ($ratings as $r) {
                     $total_rating += $r->rating;
                 }
-                $d->rating = count($ratings) > 0 ? sprintf("%.2f", $total_rating / count($ratings)) : "0.0";
+                $d->rating = count($ratings) > 0 ? sprintf("%.1f", $total_rating / count($ratings)) : "0.0";
                 if (is_numeric($d->property_posted_by)) {
                     $d->property_posted_by = User::find((int)$d->property_posted_by)->first;
                     return $d;
