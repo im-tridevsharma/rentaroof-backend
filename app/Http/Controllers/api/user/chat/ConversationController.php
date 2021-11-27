@@ -7,8 +7,11 @@ use App\Events\MessageSentEvent;
 use App\Http\Controllers\Controller;
 use App\Models\ChatMessage;
 use App\Models\Conversation;
+use App\Models\Property;
+use App\Models\PropertyDeal;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -20,12 +23,14 @@ class ConversationController extends Controller
         $user = JWTAuth::user();
         if ($user) {
             $conversations = Conversation::where("sender_id", $user->id)->orWhere("receiver_id", $user->id)->get()->map(function ($c) {
-                $receiver = User::find($c->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in']);
-                $sender = User::find($c->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in']);
+                $receiver = User::find($c->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
+                $sender = User::find($c->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
                 $last_message = ChatMessage::where("conversation_id", $c->id)->orderBy('created_at', 'desc')->first();
                 $c->receiver = $receiver;
                 $c->sender = $sender;
-                $c->last_message = $last_message;
+                if ($last_message) {
+                    $c->last_message = $last_message;
+                }
 
                 return $c;
             });
@@ -77,14 +82,12 @@ class ConversationController extends Controller
 
         if ($conversation->save()) {
 
-            $receiver = User::find($conversation->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in']);
-            $sender = User::find($conversation->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in']);
+            $receiver = User::find($conversation->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
+            $sender = User::find($conversation->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
             $last_message = ChatMessage::where("conversation_id", $conversation->id)->orderBy('created_at', 'desc')->first();
-            $conversation->receiver = $receiver;
-            $conversation->sender = $sender;
-            $conversation->last_message = $last_message;
 
-            event(new ConversationCreated($conversation));
+            event(new ConversationCreated($conversation, $receiver, $sender, $last_message));
+
             return response([
                 'status'    => true,
                 'message'   => 'Conversation created successfully.',
@@ -127,9 +130,15 @@ class ConversationController extends Controller
     public function getMessages($conversationId)
     {
         if ($conversationId) {
-            $messages = ChatMessage::where("conversation_id", $conversationId)->get()->groupBy(function ($item) {
+            $messages = ChatMessage::where("conversation_id", $conversationId)->get()->map(function ($m) {
+                if ($m->message_type === 'deal') {
+                    $m->deal = PropertyDeal::find($m->deal_id);
+                    $m->deal->property = Property::where("id", $m->deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
+                }
+                return $m;
+            })->groupBy(function ($item) {
                 return $item->date;
-            });;
+            });
             return response([
                 'status'    => true,
                 'message'   => 'Messages fetched successfully.',
@@ -146,12 +155,14 @@ class ConversationController extends Controller
     //send message 
     public function sendMessage(Request $request)
     {
+
         if (!$request->filled('message')) {
             return response([
                 'status'    => false,
                 'message'   => 'Not a valid message.'
             ], 422);
         }
+
         $conversation = Conversation::find($request->conversation_id);
 
         if ($conversation) {
@@ -165,7 +176,30 @@ class ConversationController extends Controller
 
             $message->save();
 
-            event(new MessageSentEvent($message));
+            $deal = '';
+            $property = '';
+
+            //if message is  a deal
+            if ($request->message_type === 'deal') {
+
+                $deal = new PropertyDeal;
+                $deal->property_id = $request->property_id;
+                $deal->created_by = $request->created_by;
+                $deal->offer_for = $request->receiver_id;
+                $deal->offer_price = $request->offer_price;
+                $deal->offer_expires_time = date("Y-m-d H:i:s", strtotime($request->offer_expires_date . ' ' . $request->offer_expires_time));
+
+                $deal->save();
+
+                $message->deal_id = $deal->id;
+                $message->save();
+            }
+
+            if ($request->filled('property_id')) {
+                $property = DB::table('properties')->where('id', $request->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
+            }
+
+            event(new MessageSentEvent($message, $deal, $property));
 
             return response([
                 'status'    => true,

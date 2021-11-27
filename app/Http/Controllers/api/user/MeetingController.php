@@ -65,7 +65,7 @@ class MeetingController extends Controller
                         $u = User::find($m->user_id);
                         $m->property_data = $p->name . ' - ' . $p->property_code;
                         $m->front_image = $p->front_image;
-                        $m->ibo = $u->first . ' ' . $u->last;
+                        $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
                         array_push($meetings, $m);
                     }
                 }
@@ -316,7 +316,12 @@ class MeetingController extends Controller
                     Meeting::where("user_id", "!=", $user->id)->where("create_id", $meeting->create_id)->delete();
                 }
                 if ($request->status === 'cancelled') {
-                    Meeting::where("user_id", $user->id)->where("create_id", $meeting->create_id)->delete();
+                    $count = Meeting::where("create_id", $meeting->create_id)->count();
+                    if ($count > 1) {
+                        Meeting::where("user_id", $user->id)->where("create_id", $meeting->create_id)->delete();
+                    } else {
+                        Meeting::where("create_id", $meeting->create_id)->update(["user_id" => 0]);
+                    }
                 }
 
                 return response([
@@ -408,7 +413,7 @@ class MeetingController extends Controller
     public function destroy($id)
     {
         $user = JWTAuth::user();
-        $meeting = Meeting::where("created_by_id", $user->id)->find($id);
+        $meeting = Meeting::where("created_by_id", $user->id)->where("id", $id)->first();
 
         if ($meeting) {
             $meeting->delete();

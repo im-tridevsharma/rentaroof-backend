@@ -72,6 +72,7 @@ Route::resource('enquiries', EnquiryManagement::class)->middleware('admin');
 Route::resource('sos', SosManagement::class)->middleware('admin');
 Route::resource('agreements', AgreementManagement::class)->middleware('admin');
 //manage meetings
+Route::post('meetings/assign_to_ibo', [MeetingManagement::class, 'assign_to_ibo'])->middleware('admin');
 Route::resource('meetings', MeetingManagement::class)->middleware('admin');
 Route::post('settings', [SettingController::class, 'save_and_update'])->middleware('admin');
 Route::post('settings/bulk', [SettingController::class, 'save_bulk'])->middleware('admin');

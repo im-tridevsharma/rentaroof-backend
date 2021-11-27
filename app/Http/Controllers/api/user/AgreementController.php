@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use PDF;
 
 class AgreementController extends Controller
 {
@@ -179,15 +178,15 @@ class AgreementController extends Controller
 
             $pdf->loadHTML($template)->save(public_path('temp/temp.pdf'));
 
-            // $upload_dir = '/uploads/agreements';
-            // $name = Storage::disk('digitalocean')->put($upload_dir, new File(public_path('temp/temp.pdf')), 'public');
-            // $url = Storage::disk('digitalocean')->url($name);
+            $upload_dir = '/uploads/agreements';
+            $name = Storage::disk('digitalocean')->put($upload_dir, new File(public_path('temp/temp.pdf')), 'public');
+            $url = Storage::disk('digitalocean')->url($name);
 
-            // if (file_exists(public_path('temp/temp.pdf'))) {
-            //     unlink(public_path('temp/temp.pdf'));
-            // }
+            if (file_exists(public_path('temp/temp.pdf'))) {
+                unlink(public_path('temp/temp.pdf'));
+            }
 
-            // return $url;
+            return $url;
             return "success";
         }
 

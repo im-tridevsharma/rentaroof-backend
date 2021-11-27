@@ -21,10 +21,16 @@ class ConversationCreated implements ShouldBroadcast
      */
 
     public $conversation;
+    public $receiver;
+    public $sender;
+    public $last_message;
 
-    public function __construct($conversation)
+    public function __construct($conversation, $receiver, $sender, $last_message)
     {
         $this->conversation = $conversation;
+        $this->receiver = $receiver;
+        $this->sender = $sender;
+        $this->last_message = $last_message;
     }
 
     /**

@@ -21,10 +21,14 @@ class MessageSentEvent implements ShouldBroadcast
      */
 
     public $message;
+    public $deal;
+    public $property;
 
-    public function __construct($message)
+    public function __construct($message, $deal, $property)
     {
         $this->message = $message;
+        $this->deal = $deal;
+        $this->property = $property;
     }
 
     /**

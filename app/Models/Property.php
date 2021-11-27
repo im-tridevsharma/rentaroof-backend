@@ -42,4 +42,10 @@ class Property extends Model
     {
         return $this->hasOne('App\Models\PropertyGallery');
     }
+
+    //has many deals
+    public function deals()
+    {
+        return $this->hasMany('App\Models\PropertyDeal');
+    }
 }

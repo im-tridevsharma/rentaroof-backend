@@ -252,6 +252,9 @@ class PropertyManagement extends Controller
                 $essentials->delete();
             }
 
+            //remove property verification requests for this property
+            DB::table('property_verifications')->where("property_id", $property->id)->delete();
+
             if ($property->delete()) {
                 return response([
                     'status'    => true,

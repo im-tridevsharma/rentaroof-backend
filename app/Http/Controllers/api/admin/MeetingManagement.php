@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Meeting;
 use App\Models\Property;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class MeetingManagement extends Controller
 {
@@ -23,7 +26,7 @@ class MeetingManagement extends Controller
                 'message'   => 'Meetings fetched successfully.',
                 'data'      => $meetings->map(function ($u) {
                     $u->property_id = Property::find($u->property_id) ? Property::find($u->property_id)->property_code : 0;
-                    $u->user_id = User::find($u->user_id)->first;
+                    $u->user_id = User::find($u->user_id) ? User::find($u->user_id)->first : '-';
                     return $u;
                 })
             ], 200);
@@ -47,7 +50,7 @@ class MeetingManagement extends Controller
         $meeting = Meeting::find($id);
         if ($meeting) {
             $meeting->property_id = Property::find($meeting->property_id)->property_code;
-            $meeting->user_id = User::find($meeting->user_id)->first;
+            $meeting->user_id = User::find($meeting->user_id) ? User::find($meeting->user_id)->first : '-';
             $meeting->meeting_history = json_decode($meeting->meeting_history);
             return response([
                 'status'    => true,
@@ -83,6 +86,54 @@ class MeetingManagement extends Controller
         return response([
             'status'    => false,
             'message'   => 'Meeting not found.'
+        ], 404);
+    }
+
+    //assign_to_ibo
+    public function assign_to_ibo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'meeting_id'    => 'required',
+            'ibo_id'        => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'Some errors occured.',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
+        $user = JWTAuth::user();
+        $ibo = User::find($request->ibo_id);
+        $meeting = Meeting::find($request->meeting_id);
+
+        if ($meeting) {
+            $meeting_history = json_decode($meeting->meeting_history);
+            $mhid = count($meeting_history);
+            array_push($meeting_history, [
+                "id"      => $mhid + 1,
+                "action"  => "Assigned",
+                "action_by" => $user->id,
+                "name" => $user->first . ' ' . $user->last,
+                "message" => $user->first . "(" . $user->role . ")" . " has assigned this meeting to " . $ibo->first
+            ]);
+            $meeting->meeting_history = json_encode($meeting_history);
+            $meeting->user_id = $request->ibo_id;
+            $meeting->meeting_status = "pending";
+            $meeting->save();
+
+            return response([
+                'status'    => true,
+                'message'   => 'Successfully Assigned.',
+                'data'      => $meeting
+            ], 404);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Meeting not found!'
         ], 404);
     }
 }
