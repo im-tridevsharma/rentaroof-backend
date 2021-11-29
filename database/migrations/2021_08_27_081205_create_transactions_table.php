@@ -15,18 +15,21 @@ class CreateTransactionsTable extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->decimal('amount', 10,2);
+            $table->decimal('amount', 10, 2);
             $table->decimal('paid', 10, 2);
-            $table->decimal('pending', 10,2);
+            $table->decimal('pending', 10, 2);
             $table->string('currency')->default('INR');
-            $table->string('type')->default('');
+            $table->string('type')->default('rent');
+            $table->bigInteger('type_id')->default(0);
             $table->string('order_number')->default('');
             $table->string('txn_number');
-            $table->integer('user_id');
-            $table->string('user_name');
+            $table->string('bank_ref')->default('');
+            $table->bigInteger('user_id')->default(0);
+            $table->string('user_name')->default('');
             $table->string('method')->default('');
             $table->string('status')->default('pending');
-            $table->string('gateway_used');
+            $table->string('gateway_used')->default('');
+            $table->string('message')->default('');
             $table->timestamps();
         });
     }

@@ -17,6 +17,7 @@ use App\Http\Controllers\api\user\PropertyAddressController;
 use App\Http\Controllers\api\user\PropertyController;
 use App\Http\Controllers\api\user\PropertyGalleryController;
 use App\Http\Controllers\api\user\RatingandReviewController;
+use App\Http\Controllers\api\user\RazorpayController;
 use App\Http\Controllers\api\user\ReferralPointController;
 use App\Http\Controllers\api\user\SaveSearches;
 use App\Http\Controllers\api\user\SettingController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\api\user\TenantRatingController;
 use App\Http\Controllers\api\user\TrainingController;
 use App\Http\Controllers\api\user\UserController;
 use App\Http\Controllers\api\user\UserSavedPropertyController;
+use App\Http\Controllers\api\user\WalletController;
 use App\Models\Amenity;
 use App\Models\City;
 use App\Models\Country;
@@ -129,7 +131,18 @@ Route::get("preferences", function () {
     ]);
 });
 
+
 Route::group(['middleware' => 'jwt.verify'], function () {
+
+    //payment
+    Route::post('payment/order', [RazorpayController::class, 'createOrder']);
+    Route::post('payment/success', [RazorpayController::class, 'successPayment']);
+    Route::get('payment/transactions', [RazorpayController::class, 'getAllTransactions']);
+
+    //wallet
+    Route::get('users/wallet', [WalletController::class, 'getWallet']);
+    Route::get('users/wallet/transactions', [WalletController::class, 'getAllTransactions']);
+
     //chat message
     Route::get('chat/users_for_conversation', [ConversationController::class, 'users_for_conversation']);
     Route::get('chat/conversations', [ConversationController::class, 'index']);
