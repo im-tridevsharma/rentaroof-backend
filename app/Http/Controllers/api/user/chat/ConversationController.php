@@ -25,7 +25,7 @@ class ConversationController extends Controller
             $conversations = Conversation::where("sender_id", $user->id)->orWhere("receiver_id", $user->id)->get()->map(function ($c) {
                 $receiver = User::find($c->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
                 $sender = User::find($c->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
-                $last_message = ChatMessage::where("conversation_id", $c->id)->orderBy('created_at', 'desc')->first();
+                $last_message = ChatMessage::select("id", "conversation_id", "message_type", "message")->where("conversation_id", $c->id)->orderBy('created_at', 'desc')->first();
                 $c->receiver = $receiver;
                 $c->sender = $sender;
                 if ($last_message) {

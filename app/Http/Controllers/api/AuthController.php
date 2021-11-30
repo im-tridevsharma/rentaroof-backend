@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 use App\Models\User;
+use App\Models\Wallet;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -187,6 +188,16 @@ class AuthController extends Controller
 
         //save user to database
         if ($user->save()) {
+            //create user wallet
+            $wallet = new Wallet;
+            $wallet->user_id = $user->id;
+            $wallet->amount = 0;
+            $wallet->credit = 0;
+            $wallet->debit = 0;
+            $wallet->last_transaction_type = 'credit';
+            $wallet->last_credit_transaction = date('Y-m-d H:i:s');
+
+            $wallet->save();
 
             if ($request->referral_code) {
                 $refuser = User::where("system_userid", $request->referral_code)->first();

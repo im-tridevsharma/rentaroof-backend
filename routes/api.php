@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\AuthController;
 use App\Http\Controllers\api\user\AgreementController;
 use App\Http\Controllers\api\user\chat\ConversationController;
+use App\Http\Controllers\api\user\ComplainController;
 use App\Http\Controllers\api\user\Enquiry;
 use App\Http\Controllers\api\user\IboNotificationController;
 use App\Http\Controllers\api\user\IboRatingController;
@@ -142,6 +143,9 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     //wallet
     Route::get('users/wallet', [WalletController::class, 'getWallet']);
     Route::get('users/wallet/transactions', [WalletController::class, 'getAllTransactions']);
+
+    //complain
+    Route::resource('users/complains', ComplainController::class);
 
     //chat message
     Route::get('chat/users_for_conversation', [ConversationController::class, 'users_for_conversation']);

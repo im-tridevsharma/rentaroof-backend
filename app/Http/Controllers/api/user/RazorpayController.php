@@ -159,15 +159,33 @@ class RazorpayController extends Controller
         }
     }
 
-    public function getAllTransactions()
+    public function getAllTransactions(Request $request)
     {
         $user = JWTAuth::user();
+
         if ($user) {
-            $txns = Transaction::where("type", "!=", "wallet")->where("user_id", $user->id)->get();
+            $txns = Transaction::where("type", "!=", "wallet")->where(function ($q) use ($request, $user) {
+                $q->where("user_id", $user->id);
+                if ($request->filled('user') && $request->user === 'landlord') {
+                    $tenants = Agreement::where("landlord_id", $user->id)->pluck("tenant_id")->toArray();
+                    if (count($tenants) > 0) {
+                        $q->orWhereIn("user_id", $tenants);
+                    }
+                }
+                if ($request->filled('user') && $request->user === 'ibo') {
+                    $tenants = Agreement::where("ibo_id", $user->id)->pluck("tenant_id")->toArray();
+                    if (count($tenants) > 0) {
+                        $q->orWhereIn("user_id", $tenants);
+                    }
+                }
+            });
+
+            $txns = $txns->get();
+
             return response([
                 'status'    => true,
                 'message'   => 'Transactions fetched successfully.',
-                'data'      => $txns
+                'data'      => $txns,
             ]);
         }
 
