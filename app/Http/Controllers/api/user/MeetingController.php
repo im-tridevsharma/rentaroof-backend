@@ -64,8 +64,12 @@ class MeetingController extends Controller
                         $p = Property::find($m->property_id);
                         $u = User::find($m->user_id);
                         $m->property_data = $p->name . ' - ' . $p->property_code;
+                        $m->property_monthly_rent = $p->monthly_rent;
+                        $m->property_posted_by = $p->posted_by;
                         $m->front_image = $p->front_image;
-                        $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
+                        $m->ibo = $u->first . ' ' . $u->last;
+                        $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
+                        $m->agreement = $a;
                         array_push($meetings, $m);
                     }
                 }

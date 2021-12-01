@@ -8,8 +8,10 @@ use App\Models\Amenity;
 use App\Models\Meeting;
 use App\Models\Preference;
 use App\Models\Property;
+use App\Models\PropertyDeal;
 use App\Models\PropertyEssential;
 use App\Models\PropertyGallery;
+use App\Models\TenantNotification;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
@@ -161,6 +163,23 @@ class PropertyController extends Controller
 
         $property = Property::find($id);
         if ($property) {
+
+            if ($property->is_closed) {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Property already booked. You can select another property or book another property.',
+                ], 499);
+            }
+
+            //check if meeting exist for same
+            $is_meeting = Meeting::where("property_id", $property->id)->where("created_by_id", JWTAuth::user() ? JWTAuth::user()->id : 0)->count();
+            if ($is_meeting > 0) {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Already scheduled a visit for this property.',
+                ], 403);
+            }
+
             $address = Address::find($property->address_id);
 
             $latitude = $address->lat;
@@ -943,5 +962,140 @@ class PropertyController extends Controller
             'status'    => false,
             'message'   => 'Unauthorized!'
         ], 401);
+    }
+
+    public function getDeal($id)
+    {
+        $deal = PropertyDeal::find($id);
+        if ($deal) {
+            return response([
+                'status'    => true,
+                'message'   => 'Deal fetched successfully.',
+                'data'      => $deal
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Deal not found!'
+        ], 400);
+    }
+
+    //close deal
+    public function closeDeal($id)
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $deal = PropertyDeal::where("created_by", $user->id)->where("id", $id)->first();
+            if ($deal) {
+                $deal->is_closed = 1;
+                $deal->save();
+                $deal->property = Property::where("id", $deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Deal closed successfully.',
+                    'data'      => $deal
+                ], 200);
+            }
+
+            return response([
+                'status'    => false,
+                'message'   => 'Deal not found!'
+            ], 400);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found!'
+        ], 400);
+    }
+
+    //change deal status
+    public function updateDealStatus(Request $request, $id)
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $deal = PropertyDeal::where("offer_for", $user->id)->where("id", $id)->first();
+            if ($deal) {
+                $deal->status = $request->status;
+                $deal->save();
+                $deal->property = Property::where("id", $deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Deal updated successfully.',
+                    'data'      => $deal
+                ], 200);
+            }
+
+            return response([
+                'status'    => false,
+                'message'   => 'Deal not found!'
+            ], 400);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found!'
+        ], 400);
+    }
+
+    //closeProperty
+    public function closeProperty($code)
+    {
+        $property = Property::where("property_code", $code)->first();
+        if ($property) {
+            $property->is_closed = 1;
+            $property->save();
+
+            //notify pending appointment for this property
+            $appointments = Meeting::where("property_id", $property->id)->where("meeting_status", "pending")->get()->groupBy("create_id");
+            foreach ($appointments as $value) {
+                $a = $value[0];
+                $n = new TenantNotification;
+                $n->tenant_id = $a->created_by_id;
+                $n->type = 'Normal';
+                $n->title = 'Property Booked - ' . $property->name;
+                $n->content = 'Property already booked. You can select another property or book another property';
+                $n->name = "System";
+
+                $n->save();
+
+                Meeting::where("create_id", $a->create_id)->delete();
+            }
+
+            return response([
+                'status'    => true,
+                'message'   => 'Property closed successfully.',
+                'data'      => $property->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed'])
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Property not found.'
+        ], 404);
+    }
+
+    //openProperty
+    public function openProperty($code)
+    {
+        $property = Property::where("property_code", $code)->first();
+        if ($property) {
+            $property->is_closed = 0;
+            $property->save();
+
+            return response([
+                'status'    => true,
+                'message'   => 'Property opened successfully.',
+                'data'      => $property->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed'])
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Property not found.'
+        ], 404);
     }
 }

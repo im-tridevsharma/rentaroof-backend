@@ -10,6 +10,7 @@ use App\Http\Controllers\api\admin\UserManagement;
 use App\Http\Controllers\api\admin\IBOManagement;
 use App\Http\Controllers\api\admin\LandlordManagement;
 use App\Http\Controllers\api\admin\AmenityManagement;
+use App\Http\Controllers\api\admin\ComplainManagement;
 use App\Http\Controllers\api\admin\EmployeeManagement;
 use App\Http\Controllers\api\admin\EnquiryManagement;
 use App\Http\Controllers\api\admin\MeetingManagement;
@@ -77,3 +78,7 @@ Route::resource('meetings', MeetingManagement::class)->middleware('admin');
 Route::post('settings', [SettingController::class, 'save_and_update'])->middleware('admin');
 Route::post('settings/bulk', [SettingController::class, 'save_bulk'])->middleware('admin');
 Route::get('settings/{key}', [SettingController::class, 'get'])->middleware('admin');
+
+//complains 
+Route::post('complains/status/{id}', [ComplainManagement::class, 'status'])->middleware('admin');
+Route::resource('complains', ComplainManagement::class)->middleware('admin');

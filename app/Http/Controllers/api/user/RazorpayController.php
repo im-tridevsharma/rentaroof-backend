@@ -4,6 +4,7 @@ namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agreement;
+use App\Models\Property;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\Wallet;
@@ -192,6 +193,68 @@ class RazorpayController extends Controller
         return response([
             'status'    => false,
             'message'   => 'User not found!'
+        ], 404);
+    }
+
+    public function getRecentTransactions(Request $request)
+    {
+        $user = JWTAuth::user();
+
+        if ($user) {
+            $txns = Transaction::orderBy("created_at", "desc")->where(function ($q) use ($request, $user) {
+                $q->where("user_id", $user->id);
+                if ($request->filled('user') && $request->user === 'landlord') {
+                    $tenants = Agreement::where("landlord_id", $user->id)->pluck("tenant_id")->toArray();
+                    if (count($tenants) > 0) {
+                        $q->orWhereIn("user_id", $tenants);
+                    }
+                }
+                if ($request->filled('user') && $request->user === 'ibo') {
+                    $tenants = Agreement::where("ibo_id", $user->id)->pluck("tenant_id")->toArray();
+                    if (count($tenants) > 0) {
+                        $q->orWhereIn("user_id", $tenants);
+                    }
+                }
+            });
+
+            $txns = $txns->limit(5)->get();
+
+            return response([
+                'status'    => true,
+                'message'   => 'Transactions fetched successfully.',
+                'data'      => $txns,
+            ]);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found!'
+        ], 404);
+    }
+
+    //getPropertyRentTxn
+    public function getPropertyRentTxn($code)
+    {
+        $property = Property::where("property_code", $code)->first();
+
+        if ($property) {
+            $txns = Transaction::where("type", "rent")->where(function ($q) use ($property) {
+                $agreement = Agreement::where("property_id", $property->id)->pluck("id")->toArray();
+                $q->whereIn("type_id", $agreement);
+            });
+
+            $txns = $txns->get();
+
+            return response([
+                'status'    => true,
+                'message'   => 'Transactions fetched successfully.',
+                'data'      => $txns,
+            ]);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Property not found!'
         ], 404);
     }
 }

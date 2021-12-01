@@ -26,7 +26,7 @@ class AgreementController extends Controller
         $user = JWTAuth::user();
         if ($user) {
             $agreements = Agreement::where("tenant_id", $user->id)->orWhere("ibo_id", $user->id)->orWhere("landlord_id", $user->id)->get()->map(function ($a) {
-                $a->property_data = Property::find($a->property_id)->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name']);
+                $a->property_data = Property::find($a->property_id)->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed']);
                 $a->landlord = User::find($a->landlord_id)->only(['first', 'last', 'profile_pic', 'email', 'mobile']);
                 $a->ibo = User::find($a->ibo_id)->only(['first', 'last', 'profile_pic', 'email', 'mobile']);
                 $a->tenant = User::find($a->tenant_id)->only(['first', 'last', 'profile_pic', 'email', 'mobile']);

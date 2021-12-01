@@ -139,6 +139,9 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post('payment/order', [RazorpayController::class, 'createOrder']);
     Route::post('payment/success', [RazorpayController::class, 'successPayment']);
     Route::get('payment/transactions', [RazorpayController::class, 'getAllTransactions']);
+    Route::get('payment/recent', [RazorpayController::class, 'getRecentTransactions']);
+    Route::get('properties/rent/transactions/{code}', [RazorpayController::class, 'getPropertyRentTxn']);
+
 
     //wallet
     Route::get('users/wallet', [WalletController::class, 'getWallet']);
@@ -146,6 +149,11 @@ Route::group(['middleware' => 'jwt.verify'], function () {
 
     //complain
     Route::resource('users/complains', ComplainController::class);
+
+    //deal
+    Route::get("properties/deals/close/{id}", [PropertyController::class, 'closeDeal']);
+    Route::post("properties/deals/status/{id}", [PropertyController::class, 'updateDealStatus']);
+    Route::get("properties/deals/{id}", [PropertyController::class, 'getDeal']);
 
     //chat message
     Route::get('chat/users_for_conversation', [ConversationController::class, 'users_for_conversation']);
@@ -179,6 +187,8 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post("settings/{id}", [SettingController::class, 'set']);
     Route::post("settings/account_status/{id}", [SettingController::class, 'change_account_status']);
     //properties
+    Route::get("properties/closed/{code}", [PropertyController::class, 'closeProperty']);
+    Route::get("properties/open/{code}", [PropertyController::class, 'openProperty']);
     Route::post("properties/pin/{id}", [PropertyController::class, 'addPin']);
     Route::post("properties/amenities", [PropertyController::class, 'amenity']);
     Route::post("properties/essentials", [PropertyController::class, 'essential']);

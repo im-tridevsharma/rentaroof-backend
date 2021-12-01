@@ -20,7 +20,8 @@ class CreatePropertyDealsTable extends Migration
             $table->unsignedBigInteger('offer_for')->default(0);
             $table->decimal('offer_price', 10, 2)->default(0.00);
             $table->timestamp('offer_expires_time')->nullable();
-            $table->boolean('is_expired')->default(0);
+            $table->enum('status', ['accepted', 'rejected', 'pending'])->default('pending');
+            $table->boolean('is_closed')->default(0);
             $table->timestamps();
         });
     }
