@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\Agreement;
+use App\Models\LandlordNotification;
+use App\Models\TenantNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -328,6 +331,35 @@ class MeetingController extends Controller
                     }
                 }
 
+                //notifications
+                $property = Property::find($meeting->property_id);
+                $ibo = User::find($meeting->user_id);
+
+                //notify user meeting is scheduled
+                $user_notify = new TenantNotification;
+                $user_notify->tenant_id = $meeting->created_by_id;
+                $user_notify->type = 'Urgent';
+                $user_notify->title = 'Appointment accepted.';
+                $user_notify->content = 'Scheduled visit for property - ' . $property->property_code . ' has been accepted by IBO - ' . $ibo->first . ' ' . $ibo->last;
+                $user_notify->name = 'Rent A Roof';
+
+                $user_notify->save();
+
+                event(new NotificationSent($user_notify));
+
+                //notify landlord meeting is scheduled
+                $landlord_notify = new LandlordNotification;
+                $landlord_notify->landlord_id = $property->posted_by;
+                $landlord_notify->type = 'Urgent';
+                $landlord_notify->title = 'Meeting Accepted.';
+                $landlord_notify->content = 'Meeting request for property - ' . $property->property_code . ' has been accepted by IBO - ' . $ibo->first . ' ' . $ibo->last;
+                $landlord_notify->name = 'Rent A Roof';
+                $landlord_notify->redirect = '/landlord/appointment';
+
+                $landlord_notify->save();
+
+                event(new NotificationSent($landlord_notify));
+
                 return response([
                     'status'    => true,
                     'message'   => 'Meeting updated successfully.',
@@ -388,6 +420,23 @@ class MeetingController extends Controller
             $meeting->meeting_history = json_encode($meeting_history);
 
             if ($meeting->save()) {
+                //notifications
+                $property = Property::find($meeting->property_id);
+                $ibo = User::find($meeting->user_id);
+
+                //notify landlord meeting is scheduled
+                $landlord_notify = new LandlordNotification;
+                $landlord_notify->landlord_id = $property->posted_by;
+                $landlord_notify->type = 'Normal';
+                $landlord_notify->title = 'Meeting Rescheduled';
+                $landlord_notify->content = 'Meeting request for property - ' . $property->property_code . ' has been rescheduled by IBO - ' . $ibo->first . ' ' . $ibo->last . ' at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
+                $landlord_notify->name = 'Rent A Roof';
+                $landlord_notify->redirect = '/landlord/appointment';
+
+                $landlord_notify->save();
+
+                event(new NotificationSent($landlord_notify));
+
                 return response([
                     'status'    => true,
                     'message'   => 'Meeting scheduled successfully.',

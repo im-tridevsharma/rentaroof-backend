@@ -61,6 +61,8 @@ Route::get('page', [PageManagement::class, 'getPage']);
 Route::get('pages', [PageManagement::class, 'getPages']);
 Route::get('website/initials/{key}', [AdminSettingController::class, 'get']);
 
+
+Route::get("properties/top", [PropertyController::class, 'top_properties']);
 Route::get("properties/search", [PropertyController::class, 'search']);
 Route::get("properties/for_verification", [PropertyController::class, 'for_verification'])->middleware('jwt.verify');
 Route::post("properties/change_verification_status/{id}", [PropertyController::class, 'change_verification_status'])->middleware('jwt.verify');
@@ -76,14 +78,17 @@ Route::get("properties/landlord/{id}", [PropertyController::class, 'property_by_
 
 Route::get('ratings/ibo/all/{id}', [IboRatingController::class, 'all']);
 Route::resource('ratings/ibo', IboRatingController::class);
+Route::get('ibo/notifications/unseen', [IboNotificationController::class, 'unseenNotification']);
 Route::get("ibo/notifications/seen/{id}", [IboNotificationController::class, 'seen']);
 Route::resource('ibo/notifications', IboNotificationController::class);
 
 Route::get('ratings/landlord/all/{id}', [LandlordRatingController::class, 'all']);
 Route::resource('ratings/landlord', LandlordRatingController::class);
+Route::get('landlord/notifications/unseen', [LandlordNotificationController::class, 'unseenNotification']);
 Route::get("landlord/notifications/seen/{id}", [LandlordNotificationController::class, 'seen']);
 Route::resource('landlord/notifications', LandlordNotificationController::class);
 
+Route::get('tenant/notifications/unseen', [TenantNotificationController::class, 'unseenNotification']);
 Route::get("tenant/notifications/seen/{id}", [TenantNotificationController::class, 'seen']);
 Route::resource('tenant/notifications', TenantNotificationController::class);
 Route::get('ratings/tenant/all/{id}', [TenantRatingController::class, 'all']);
@@ -162,6 +167,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::delete('chat/conversations/{id}', [ConversationController::class, 'destroy']);
     Route::get('chat/messages/{conversationId}', [ConversationController::class, 'getMessages']);
     Route::post('chat/messages', [ConversationController::class, 'sendMessage']);
+    Route::post('chat/conversations/status', [ConversationController::class, 'change_status']);
 
     Route::put('users/password/{id}', [UserController::class, 'password']);
     Route::get('users/search', [UserController::class, 'search']);

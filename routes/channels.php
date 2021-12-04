@@ -2,7 +2,6 @@
 
 use App\Models\Conversation;
 use Illuminate\Support\Facades\Broadcast;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,6 +13,11 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 | used to check if an authenticated user can listen to the channel.
 |
 */
+
+
+Broadcast::channel('notification', function ($user) {
+    return $user;
+});
 
 Broadcast::channel('chat-screen', function ($user) {
     return $user;

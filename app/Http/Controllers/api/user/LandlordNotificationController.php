@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\NotificationSeen;
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\LandlordNotification;
 use App\Models\User;
@@ -25,6 +27,26 @@ class LandlordNotificationController extends Controller
                 'status'    => true,
                 'message'   => 'Notifications fetched successfully.',
                 'data'      => $notifications
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Action not allowed!'
+        ], 401);
+    }
+
+
+    //return count of unseen notification 
+    public function unseenNotification()
+    {
+        $user = JWTAuth::user();
+        if ($user && $user->role === 'landlord') {
+            $count = LandlordNotification::where("landlord_id", $user->id)->where("is_seen", 0)->count();
+            return response([
+                'status'    => true,
+                'message'   => 'Unseen notification of landlord.',
+                'data'      => $count
             ], 200);
         }
 
@@ -73,6 +95,7 @@ class LandlordNotificationController extends Controller
         $notification->redirect = $request->has('redirect') ? $request->redirect : '';
 
         if ($notification->save()) {
+            event(new NotificationSent($notification));
             return response([
                 'status'    => true,
                 'message'   => 'Notification saved successfully.',
@@ -118,6 +141,7 @@ class LandlordNotificationController extends Controller
         if ($notification) {
             $notification->is_seen = 1;
             $notification->save();
+            event(new NotificationSeen($notification));
             return response([
                 'status'    => true,
                 'message'   => 'Notification seen succesfully.',
@@ -141,8 +165,12 @@ class LandlordNotificationController extends Controller
     {
         $user = JWTAuth::user();
         $notification = LandlordNotification::where("landlord_id", $user ? $user->id : 0)->where("id", $id)->first();
+        if ($notification->is_seen === 0) {
+            event(new NotificationSeen($notification));
+        }
         if ($notification) {
             $notification->delete();
+
             return response([
                 'status'    => true,
                 'message'   => 'Notification deleted succesfully.',

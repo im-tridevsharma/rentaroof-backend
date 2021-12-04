@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\Agreement;
 use App\Models\Amenity;
+use App\Models\IboNotification;
+use App\Models\LandlordNotification;
 use App\Models\Meeting;
 use App\Models\Preference;
 use App\Models\Property;
@@ -13,6 +17,7 @@ use App\Models\PropertyEssential;
 use App\Models\PropertyGallery;
 use App\Models\TenantNotification;
 use App\Models\User;
+use App\Models\UserSavedProperty;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -146,11 +151,12 @@ class PropertyController extends Controller
     //schedule appointment
     public function appointment(Request $request, $id)
     {
-
         $validator = Validator::make($request->all(), [
-            'name'  => 'required|string|between:2,50',
-            'email' => 'required|string',
+            'name'    => 'required|string|between:2,50',
+            'email'   => 'required|string',
             'contact' => 'required|between:10,12',
+            'date'    => 'required',
+            'time'    => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -217,8 +223,46 @@ class PropertyController extends Controller
                         $meeting->meeting_history = json_encode([]);
 
                         $meeting->save();
+
+                        //send notification to ibo for appointment request
+                        $ibo_notify = new IboNotification;
+                        $ibo_notify->ibo_id = $user->id;
+                        $ibo_notify->type = 'Urgent';
+                        $ibo_notify->title = 'You have new appointment.';
+                        $ibo_notify->content = 'You have new appointment for property - ' . $property->property_code . '. Scheduled at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
+                        $ibo_notify->name = 'Rent A Roof';
+                        $ibo_notify->redirect = '/ibo/appointment';
+
+                        $ibo_notify->save();
+
+                        event(new NotificationSent($ibo_notify));
                     }
                 }
+
+                //notify user meeting is scheduled
+                $user_notify = new TenantNotification;
+                $user_notify->tenant_id = JWTAuth::user() ? JWTAuth::user()->id : 0;
+                $user_notify->type = 'Urgent';
+                $user_notify->title = 'You successfully scheduled a visit.';
+                $user_notify->content = 'Scheduled a visit for property - ' . $property->property_code . '. Our executive will contact you soon.';
+                $user_notify->name = 'Rent A Roof';
+
+                $user_notify->save();
+
+                event(new NotificationSent($user_notify));
+
+                //notify landlord meeting is scheduled
+                $landlord_notify = new LandlordNotification;
+                $landlord_notify->landlord_id = $property->posted_by;
+                $landlord_notify->type = 'Urgent';
+                $landlord_notify->title = 'New meeting request.';
+                $landlord_notify->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
+                $landlord_notify->name = 'Rent A Roof';
+                $landlord_notify->redirect = '/landlord/appointment';
+
+                $landlord_notify->save();
+
+                event(new NotificationSent($landlord_notify));
 
                 return response([
                     'status'    => true,
@@ -1072,6 +1116,11 @@ class PropertyController extends Controller
             ], 200);
         }
 
+        //pay fee to ibo for this property
+        $agreement = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
+        if ($agreement) {
+        }
+
         return response([
             'status'    => false,
             'message'   => 'Property not found.'
@@ -1097,5 +1146,22 @@ class PropertyController extends Controller
             'status'    => false,
             'message'   => 'Property not found.'
         ], 404);
+    }
+
+    //top_properties
+    public function top_properties()
+    {
+        $pids = UserSavedProperty::where("type", "visited")->pluck("property_id")->toArray();
+        $pids = array_count_values($pids);
+        arsort($pids);
+        $popular = array_slice(array_keys($pids), 0, 5, true);
+
+        $properties = Property::whereIn("id", $popular)->orderByRaw("FIELD(id, " . implode(',', $popular) . ")")->limit(5)->get();
+
+        return response([
+            'status'    => true,
+            'message'   => 'Top properties fetched successfully.',
+            'data'      => $properties
+        ], 200);
     }
 }

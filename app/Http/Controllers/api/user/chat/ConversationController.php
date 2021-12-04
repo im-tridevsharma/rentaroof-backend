@@ -4,11 +4,15 @@ namespace App\Http\Controllers\api\user\chat;
 
 use App\Events\ConversationCreated;
 use App\Events\MessageSentEvent;
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\ChatMessage;
 use App\Models\Conversation;
+use App\Models\IboNotification;
+use App\Models\LandlordNotification;
 use App\Models\Property;
 use App\Models\PropertyDeal;
+use App\Models\TenantNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,7 +51,69 @@ class ConversationController extends Controller
         ], 401);
     }
 
+    //change_status
+    public function change_status(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'conversation_id' => 'required',
+            'status'          => 'required|in:yes,no,pending'
+        ]);
 
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'Some errors occured.',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
+        $conversation = Conversation::find($request->conversation_id);
+        if ($conversation) {
+            $conversation->is_accepted = $request->status;
+            $conversation->save();
+
+            //send notification to sender
+            $sender = User::find($conversation->sender_id);
+            $receiver = User::find($conversation->receiver_id);
+
+            if ($sender) {
+                //notify user meeting is scheduled
+                $notify = $sender->role === 'tenant' ? new TenantNotification : ($sender->role === 'ibo' ? new IboNotification : new LandlordNotification);
+                if ($sender->role === 'tenant') {
+                    $notify->tenant_id = $sender->id;
+                }
+                if ($sender->role === 'ibo') {
+                    $notify->ibo_id = $sender->id;
+                }
+                if ($sender->role === 'landlord') {
+                    $notify->landlord_id = $sender->id;
+                }
+
+                $changed = $request->status == 'yes' ? 'accepted' : 'rejected';
+
+                $notify->type = 'Urgent';
+                $notify->title = 'Chat Request Status';
+                $notify->content = $receiver->first . ' ' . $receiver->last . ' has ' . $changed . ' your chat request.';
+                $notify->name = 'Rent A Roof';
+                $notify->redirect = '/' . $sender->role . '/chat';
+
+                $notify->save();
+
+                event(new NotificationSent($notify));
+            }
+
+            return response([
+                'status'    => true,
+                'message'   => 'Status changed successfully.',
+                'data'      => $conversation
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Conversation not found.'
+        ], 404);
+    }
 
     //create new conversation
     public function store(Request $request)
@@ -81,12 +147,53 @@ class ConversationController extends Controller
         $conversation->receiver_id = $request->receiver_id;
 
         if ($conversation->save()) {
-
-            $receiver = User::find($conversation->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
-            $sender = User::find($conversation->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
+            $receiver = User::find($conversation->receiver_id)->only(['first', 'last', 'role', 'profile_pic', 'is_logged_in', 'id']);
+            $sender = User::find($conversation->sender_id)->only(['first', 'last', 'role', 'profile_pic', 'is_logged_in', 'id']);
             $last_message = ChatMessage::where("conversation_id", $conversation->id)->orderBy('created_at', 'desc')->first();
 
             event(new ConversationCreated($conversation, $receiver, $sender, $last_message));
+
+            //notification for chat start
+            if ($receiver['role'] === 'tenant') {
+                $user_notify = new TenantNotification;
+                $user_notify->tenant_id = $request->receiver_id;
+                $user_notify->title = 'New Chat Request';
+                $user_notify->content = $sender['first'] . ' ' . $sender['last'] . ' wants to chat with you. Please visit chat screen!';
+                $user_notify->type = 'Urgent';
+                $user_notify->name = 'Rent A Roof';
+                $user_notify->redirect = '/tenant/chat';
+
+                $user_notify->save();
+                event(new NotificationSent($user_notify));
+            }
+
+            //notification for chat start
+            if ($receiver['role'] === 'ibo') {
+                $ibo_notify = new IboNotification;
+                $ibo_notify->ibo_id = $request->receiver_id;
+                $ibo_notify->title = 'New Chat Request';
+                $ibo_notify->content = $sender['first'] . ' ' . $sender['last'] . ' wants to chat with you. Please visit chat screen!';
+                $ibo_notify->type = 'Urgent';
+                $ibo_notify->name = 'Rent A Roof';
+                $ibo_notify->redirect = '/ibo/chat';
+
+                $ibo_notify->save();
+                event(new NotificationSent($ibo_notify));
+            }
+
+            //notification for chat start
+            if ($receiver['role'] === 'landlord') {
+                $landlord_notify = new LandlordNotification;
+                $landlord_notify->landlord_id = $request->receiver_id;
+                $landlord_notify->title = 'New Chat Request';
+                $landlord_notify->content = $sender['first'] . ' ' . $sender['last'] . ' wants to chat with you. Please visit chat screen!';
+                $landlord_notify->type = 'Urgent';
+                $landlord_notify->name = 'Rent A Roof';
+                $landlord_notify->redirect = '/landlord/chat';
+
+                $landlord_notify->save();
+                event(new NotificationSent($landlord_notify));
+            }
 
             return response([
                 'status'    => true,
