@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\IboNotification;
 use App\Models\IboRating;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -58,6 +60,18 @@ class IboRatingController extends Controller
         $rating->contact = $user ? $user->mobile : '';
 
         if ($rating->save()) {
+            //notify user meeting is scheduled
+            $ibo_notify = new IboNotification;
+            $ibo_notify->ibo_id = $rating->ibo_id;
+            $ibo_notify->type = 'Notification';
+            $ibo_notify->title = 'New Review Notification';
+            $ibo_notify->content = $user->first . ' ' . $user->last . ' has reviewed you.';
+            $ibo_notify->name = 'Rent A Roof';
+
+            $ibo_notify->save();
+
+            event(new NotificationSent($ibo_notify));
+
             return response([
                 'status'    => true,
                 'message'   => 'Rating and review saved successfully.',

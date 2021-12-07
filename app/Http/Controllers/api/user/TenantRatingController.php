@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\TenantNotification;
 use App\Models\TenantRating;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -58,6 +60,18 @@ class TenantRatingController extends Controller
         $rating->contact = $user ? (!empty($user->mobile) ? $user->mobile : '') : '';
 
         if ($rating->save()) {
+            //notify user meeting is scheduled
+            $user_notify = new TenantNotification;
+            $user_notify->tenant_id = $rating->tenant_id;
+            $user_notify->type = 'Urgent';
+            $user_notify->title = 'New Review Notification';
+            $user_notify->content = $user->first . ' ' . $user->last . ' reviewed you.';
+            $user_notify->name = 'Rent A Roof';
+
+            $user_notify->save();
+
+            event(new NotificationSent($user_notify));
+
             return response([
                 'status'    => true,
                 'message'   => 'Rating and review saved successfully.',

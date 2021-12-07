@@ -66,6 +66,28 @@ class SettingController extends Controller
         ], 404);
     }
 
+    //get settings alternate
+    public function get_for_mobile($id)
+    {
+        $user = User::find($id);
+
+        if ($user) {
+            $settings = DB::table("user_settings")->where("user_id", $id)->get()->map(function ($s) {
+                return ["name" => $s->key, "value" => $s->value];
+            });
+            return response([
+                'status'    => true,
+                'message'   => 'Settings fetched successfully',
+                'data'      => $settings
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found'
+        ], 404);
+    }
+
     //set setting
     public function set($id, Request $request)
     {

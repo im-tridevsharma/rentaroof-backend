@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\Agreement;
+use App\Models\IboNotification;
 use App\Models\Property;
+use App\Models\TenantNotification;
 use App\Models\User;
 use Illuminate\Http\File;
 use Illuminate\Http\Request;
@@ -21,12 +24,14 @@ class AgreementController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = JWTAuth::user();
         if ($user) {
-            $agreements = Agreement::where("tenant_id", $user->id)->orWhere("ibo_id", $user->id)->orWhere("landlord_id", $user->id)->get()->map(function ($a) {
-                $a->property_data = Property::find($a->property_id)->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed']);
+            $agreements = Agreement::where("tenant_id", $user->id)->orWhere("ibo_id", $user->id)->orWhere("landlord_id", $user->id)->get()->map(function ($a) use ($request) {
+                if (!$request->has('property_data')) {
+                    $a->property_data = Property::find($a->property_id)->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed']);
+                }
                 $a->landlord = User::find($a->landlord_id)->only(['first', 'last', 'profile_pic', 'email', 'mobile']);
                 $a->ibo = User::find($a->ibo_id)->only(['first', 'last', 'profile_pic', 'email', 'mobile']);
                 $a->tenant = User::find($a->tenant_id)->only(['first', 'last', 'profile_pic', 'email', 'mobile']);
@@ -93,12 +98,39 @@ class AgreementController extends Controller
         $agreement->fee_percentage = $request->has('fee_percentage') ? $request->fee_percentage : '';
         $agreement->fee_amount = $request->has('fee_amount') ? $request->fee_amount : '';
         $agreement->number_of_invoices = 0;
+        $agreement->security_amount = $request->has('security_amount') ? $request->security_amount : 0;
 
         //create agreement and upload to server
         $url = $this->create_agreement($agreement);
         $agreement->agreement_url = $url;
 
         if ($agreement->save()) {
+            //notify user and ibo for this agreement
+            $property = Property::find($agreement->property_id);
+            //notify user meeting is scheduled
+            $user_notify = new TenantNotification;
+            $user_notify->tenant_id = $agreement->tenant_id;
+            $user_notify->type = 'Urgent';
+            $user_notify->title = 'Agreement Created🎉';
+            $user_notify->content = 'Agreement created for property - ' . $property->property_code . '. Please check now.';
+            $user_notify->name = 'Rent A Roof';
+            $user_notify->redirect = '/tenant/agreements?a=' . $agreement->id;
+            $user_notify->save();
+            event(new NotificationSent($user_notify));
+
+            //send notification to ibo
+            $ibo_notify = new IboNotification;
+            $ibo_notify->ibo_id = $agreement->ibo_id;
+            $ibo_notify->type = 'Urgent';
+            $ibo_notify->title = 'Agreement Created🎉';
+            $ibo_notify->content = 'Agreement created for property - ' . $property->property_code . '. Please check now.';
+            $ibo_notify->name = 'Rent A Roof';
+            $ibo_notify->redirect = '/ibo/properties';
+
+            $ibo_notify->save();
+
+            event(new NotificationSent($ibo_notify));
+
             return response([
                 'status'    => true,
                 'message'   => 'Agreement saved successfully',

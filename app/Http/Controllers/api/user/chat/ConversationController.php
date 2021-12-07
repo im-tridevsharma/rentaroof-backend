@@ -240,7 +240,7 @@ class ConversationController extends Controller
             $messages = ChatMessage::where("conversation_id", $conversationId)->get()->map(function ($m) {
                 if ($m->message_type === 'deal') {
                     $m->deal = PropertyDeal::find($m->deal_id);
-                    $m->deal->property = Property::where("id", $m->deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
+                    $m->deal->property = Property::where("id", $m->deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent', 'posted_by']);
                 }
                 return $m;
             })->groupBy(function ($item) {
@@ -294,6 +294,7 @@ class ConversationController extends Controller
                 $deal->created_by = $request->created_by;
                 $deal->offer_for = $request->receiver_id;
                 $deal->offer_price = $request->offer_price;
+                $deal->conversationId = $conversation->id;
                 $deal->offer_expires_time = date("Y-m-d H:i:s", strtotime($request->offer_expires_date . ' ' . $request->offer_expires_time));
 
                 $deal->save();
@@ -303,7 +304,7 @@ class ConversationController extends Controller
             }
 
             if ($request->filled('property_id')) {
-                $property = DB::table('properties')->where('id', $request->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
+                $property = DB::table('properties')->where('id', $request->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent', 'posted_by']);
             }
 
             event(new MessageSentEvent($message, $deal, $property));

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\api\user;
 use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\Agreement;
+use App\Models\IboNotification;
 use App\Models\LandlordNotification;
 use App\Models\TenantNotification;
 use Illuminate\Http\Request;
@@ -25,7 +26,12 @@ class MeetingController extends Controller
     public function index()
     {
         $user = JWTAuth::user();
-        $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc")->get();
+        $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc");
+        if ($user && $user->role === 'tenant') {
+            $meetings->where("meeting_status", '!=', 'pending');
+            $meetings->where("user_id", '!=', 0);
+        }
+        $meetings = $meetings->get();
 
         if ($meetings) {
             return response([
@@ -36,13 +42,68 @@ class MeetingController extends Controller
                     $u = User::find($m->user_id);
                     $m->property_data = $p->name . ' - ' . $p->property_code;
                     $m->property_monthly_rent = $p->monthly_rent;
+                    $m->property_security_amount = $p->security_amount;
                     $m->property_posted_by = $p->posted_by;
                     $m->front_image = $p->front_image;
-                    $m->ibo = $u->first . ' ' . $u->last;
+                    $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
                     $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
                     $m->agreement = $a;
                     return $m;
                 })
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Something went wrong.'
+        ], 500);
+    }
+
+    //meeting_count_for_mobile
+    public function meeting_count_for_mobile()
+    {
+        $user = JWTAuth::user();
+        $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc");
+        if ($user && $user->role === 'tenant') {
+            $meetings->where("meeting_status", '!=', 'pending');
+            $meetings->where("user_id", '!=', 0);
+        }
+
+        $meetings = $meetings->get();
+        $today = 0;
+        $upcoming = 0;
+        $history = 0;
+
+        foreach ($meetings as $m) {
+            if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                $today++;
+            }
+            if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
+                $upcoming++;
+            }
+            if ($m->meeting_history !== '' && $m->meeting_history !== '[]') {
+                $history++;
+            }
+        }
+
+        if ($meetings) {
+            return response([
+                'status'    => true,
+                'message'   => 'Meetings count fetched successfully.',
+                'data'      => [
+                    [
+                        "name"  => "today",
+                        "value" => $today
+                    ],
+                    [
+                        "name"  => "upcoming",
+                        "value" => $upcoming
+                    ],
+                    [
+                        "name"  => "history",
+                        "value" => $history
+                    ]
+                ]
             ], 200);
         }
 
@@ -68,6 +129,7 @@ class MeetingController extends Controller
                         $u = User::find($m->user_id);
                         $m->property_data = $p->name . ' - ' . $p->property_code;
                         $m->property_monthly_rent = $p->monthly_rent;
+                        $m->property_security_amount = $p->security_amount;
                         $m->property_posted_by = $p->posted_by;
                         $m->front_image = $p->front_image;
                         $m->ibo = $u->first . ' ' . $u->last;
@@ -81,6 +143,58 @@ class MeetingController extends Controller
                 'status'    => true,
                 'message'   => 'Meetings fetched successfully.',
                 'data'      => $meetings
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Landlord not found!'
+        ], 404);
+    }
+
+    /**get meetings of landlord belonged property for mobile */
+    public function landlord_meetings_mobile($id)
+    {
+        $landlord = User::find($id);
+        if ($landlord) {
+            //fetch properties of landlord
+            $properties = Property::where("posted_by", $landlord->id)->get();
+            foreach ($properties as $p) {
+                if (Meeting::where("property_id", $p->id)->count() > 0) {
+                    $allm = Meeting::where("property_id", $p->id)->get();
+                    $today = 0;
+                    $upcoming = 0;
+                    $history = 0;
+                    foreach ($allm as $m) {
+                        if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                            $today++;
+                        }
+                        if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
+                            $upcoming++;
+                        }
+                        if ($m->meeting_history !== '' && $m->meeting_history !== '[]') {
+                            $history++;
+                        }
+                    }
+                }
+            }
+            return response([
+                'status'    => true,
+                'message'   => 'Meetings count fetched successfully.',
+                'data'      => [
+                    [
+                        "name"  => "today",
+                        "value" => $today
+                    ],
+                    [
+                        "name"  => "upcoming",
+                        "value" => $upcoming
+                    ],
+                    [
+                        "name"  => "history",
+                        "value" => $history
+                    ]
+                ]
             ], 200);
         }
 
@@ -275,8 +389,9 @@ class MeetingController extends Controller
     public function update_status(Request $request, $id)
     {
         $user = JWTAuth::user();
+        $ibo_id = null;
         $validator = Validator::make($request->input(), [
-            'status'    => 'required|string|in:pending,cancelled,approved,visited,closed'
+            'status'    => 'required|string|in:pending,cancelled,approved,visited,closed,on the way'
         ]);
 
         if ($validator->fails()) {
@@ -298,6 +413,7 @@ class MeetingController extends Controller
         if ($meeting && count($meeting) > 0) {
             $meeting = $meeting[0];
             $meeting->meeting_status = $request->status;
+            $ibo_id = $meeting->user_id;
 
             if ($request->status === 'closed') {
                 $meeting->end_time = date("Y-m-d H:i:s");
@@ -315,6 +431,7 @@ class MeetingController extends Controller
                 "name" => $user->first . ' ' . $user->last,
                 "message" => $user->first . "(" . $user->role . ")" . " has updated meeting's status to > " . $request->status
             ]);
+
             $meeting->meeting_history = json_encode($meeting_history);
 
             if ($meeting->save()) {
@@ -333,26 +450,41 @@ class MeetingController extends Controller
 
                 //notifications
                 $property = Property::find($meeting->property_id);
-                $ibo = User::find($meeting->user_id);
+                $ibo = User::find($ibo_id);
 
-                //notify user meeting is scheduled
-                $user_notify = new TenantNotification;
-                $user_notify->tenant_id = $meeting->created_by_id;
-                $user_notify->type = 'Urgent';
-                $user_notify->title = 'Appointment accepted.';
-                $user_notify->content = 'Scheduled visit for property - ' . $property->property_code . ' has been accepted by IBO - ' . $ibo->first . ' ' . $ibo->last;
-                $user_notify->name = 'Rent A Roof';
+                if ($user->role === 'ibo') {
+                    //notify user meeting is scheduled
+                    $s = $meeting->meeting_status === 'approved' ? 'Appointment Accepted' : 'Appointment ' . ucwords($meeting->meeting_status);
+                    $user_notify = new TenantNotification;
+                    $user_notify->tenant_id = $meeting->created_by_id;
+                    $user_notify->type = 'Urgent';
+                    $user_notify->title = $s;
+                    $user_notify->content = $meeting->meeting_status === 'approved' ? 'Scheduled visit for property - ' . $property->property_code . ' has been accepted by IBO - ' . $ibo->first . ' ' . $ibo->last : 'Your Appointment status has been updated by IBO.';
+                    $user_notify->name = 'Rent A Roof';
 
-                $user_notify->save();
+                    $user_notify->save();
 
-                event(new NotificationSent($user_notify));
+                    event(new NotificationSent($user_notify));
+                } else if ($user->role === 'tenant') {
+                    //notify user meeting is scheduled
+                    $ibo_notify = new IboNotification;
+                    $ibo_notify->ibo_id = $ibo_id;
+                    $ibo_notify->type = 'Urgent';
+                    $ibo_notify->title = 'Appointment ' . ucwords($meeting->meeting_status);
+                    $ibo_notify->content = 'Appointment for property - ' . $property->property_code . ' has been ' . $meeting->meeting_status . ' by - ' . $user->first . ' ' . $user->last;
+                    $ibo_notify->name = 'Rent A Roof';
+
+                    $ibo_notify->save();
+
+                    event(new NotificationSent($ibo_notify));
+                }
 
                 //notify landlord meeting is scheduled
                 $landlord_notify = new LandlordNotification;
                 $landlord_notify->landlord_id = $property->posted_by;
                 $landlord_notify->type = 'Urgent';
-                $landlord_notify->title = 'Meeting Accepted.';
-                $landlord_notify->content = 'Meeting request for property - ' . $property->property_code . ' has been accepted by IBO - ' . $ibo->first . ' ' . $ibo->last;
+                $landlord_notify->title = $meeting->meeting_status === 'approved' ? 'Meeting Accepted.' : 'Meeting Status Changed to ' . $meeting->meeting_status;
+                $landlord_notify->content = $meeting->meeting_status === 'approved' ? 'Meeting request for property - ' . $property->property_code . ' has been accepted by IBO - ' . $ibo->first . ' ' . $ibo->last : 'Meeting status updated';
                 $landlord_notify->name = 'Rent A Roof';
                 $landlord_notify->redirect = '/landlord/appointment';
 
@@ -424,12 +556,38 @@ class MeetingController extends Controller
                 $property = Property::find($meeting->property_id);
                 $ibo = User::find($meeting->user_id);
 
+                if ($user->role === 'ibo') {
+                    //notify user meeting is scheduled
+                    $user_notify = new TenantNotification;
+                    $user_notify->tenant_id = $meeting->created_by_id;
+                    $user_notify->type = 'Urgent';
+                    $user_notify->title = 'Appointment Rescheduled.';
+                    $user_notify->content = 'Appointment for property - ' . $property->property_code . ' has been rescheduled by IBO - ' . $ibo->first . ' ' . $ibo->last . ' at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
+                    $user_notify->name = 'Rent A Roof';
+
+                    $user_notify->save();
+
+                    event(new NotificationSent($user_notify));
+                } else if ($user->role === 'tenant') {
+                    //notify user meeting is scheduled
+                    $ibo_notify = new IboNotification;
+                    $ibo_notify->ibo_id = $meeting->user_id;
+                    $ibo_notify->type = 'Urgent';
+                    $ibo_notify->title = 'Appointment Rescheduled.';
+                    $ibo_notify->content = 'Appointment for property - ' . $property->property_code . ' has been rescheduled by - ' . $user->first . ' ' . $user->last . ' at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
+                    $ibo_notify->name = 'Rent A Roof';
+
+                    $ibo_notify->save();
+
+                    event(new NotificationSent($ibo_notify));
+                }
+
                 //notify landlord meeting is scheduled
                 $landlord_notify = new LandlordNotification;
                 $landlord_notify->landlord_id = $property->posted_by;
                 $landlord_notify->type = 'Normal';
-                $landlord_notify->title = 'Meeting Rescheduled';
-                $landlord_notify->content = 'Meeting request for property - ' . $property->property_code . ' has been rescheduled by IBO - ' . $ibo->first . ' ' . $ibo->last . ' at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
+                $landlord_notify->title = 'Appointment Rescheduled';
+                $landlord_notify->content = $user->role === 'ibo' ? 'Appointment for property - ' . $property->property_code . ' has been rescheduled by IBO - ' . $ibo->first . ' ' . $ibo->last . ' at ' . date('d-m-Y H:i', strtotime($meeting->start_time)) : 'Appointment for property - ' . $property->property_code . ' has been rescheduled by User - ' . $user->first . ' ' . $user->last . ' at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
                 $landlord_notify->name = 'Rent A Roof';
                 $landlord_notify->redirect = '/landlord/appointment';
 

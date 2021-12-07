@@ -73,6 +73,8 @@ Route::post("properties/appointment/{id}", [PropertyController::class, 'appointm
 Route::get("properties/reviews/all/{id}", [RatingandReviewController::class, 'all']);
 Route::resource("properties/reviews", RatingandReviewController::class);
 
+Route::get('ibo/properties_by_type', [PropertyController::class, 'ibo_properties_by_type']);
+Route::get('landlord/properties_by_type', [PropertyController::class, 'landlord_properties_by_type']);
 Route::get("properties/ibo/{id}", [PropertyController::class, 'property_by_user']);
 Route::get("properties/landlord/{id}", [PropertyController::class, 'property_by_user']);
 
@@ -181,6 +183,8 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post('meetings/update/{id}/status', [MeetingController::class, 'update_status']);
     Route::post('meetings/update/{id}/reschedule', [MeetingController::class, 'reschedule']);
     Route::get('meetings/landlord/{id}', [MeetingController::class, 'landlord_meetings']);
+    Route::get('meetings/for_mobile', [MeetingController::class, 'meeting_count_for_mobile']);
+    Route::get('meetings/for_mobile/landlord/{id}', [MeetingController::class, 'landlord_meetings_mobile']);
     Route::resource('meetings', MeetingController::class);
 
     //Trainning
@@ -190,9 +194,11 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     //settings
     Route::post('settings/template', [SettingController::class, 'update_template']);
     Route::get("settings/{id}", [SettingController::class, 'get']);
+    Route::get("settings/for_mobile/{id}", [SettingController::class, 'get_for_mobile']);
     Route::post("settings/{id}", [SettingController::class, 'set']);
     Route::post("settings/account_status/{id}", [SettingController::class, 'change_account_status']);
     //properties
+    Route::get('properties/visited', [PropertyController::class, 'visitedProperties']);
     Route::get("properties/closed/{code}", [PropertyController::class, 'closeProperty']);
     Route::get("properties/open/{code}", [PropertyController::class, 'openProperty']);
     Route::post("properties/pin/{id}", [PropertyController::class, 'addPin']);

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\api\admin;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\IboNotification;
 use App\Models\Meeting;
 use App\Models\Property;
 use App\Models\User;
@@ -121,8 +123,23 @@ class MeetingManagement extends Controller
             ]);
             $meeting->meeting_history = json_encode($meeting_history);
             $meeting->user_id = $request->ibo_id;
+            $meeting->start_time = date('Y-m-d H:i:s', strtotime('tomorrow'));
             $meeting->meeting_status = "pending";
             $meeting->save();
+
+            $property = Property::find($meeting->property_id);
+            //send notification to ibo
+            $ibo_notify = new IboNotification;
+            $ibo_notify->ibo_id = $meeting->user_id;
+            $ibo_notify->type = 'Urgent';
+            $ibo_notify->title = 'Appointment Assigned.';
+            $ibo_notify->content = 'Appointment for property - ' . $property->property_code . ' has been assigned by Admin - ' . $user->first . ' ' . $user->last . ' to you.';
+            $ibo_notify->name = 'Rent A Roof';
+            $ibo_notify->redirect = '/ibo/appointment';
+
+            $ibo_notify->save();
+
+            event(new NotificationSent($ibo_notify));
 
             return response([
                 'status'    => true,

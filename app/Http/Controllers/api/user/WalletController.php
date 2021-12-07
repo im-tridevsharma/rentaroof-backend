@@ -36,11 +36,19 @@ class WalletController extends Controller
         ], 404);
     }
 
-    public function getAllTransactions()
+    public function getAllTransactions(Request $request)
     {
         $user = JWTAuth::user();
         if ($user) {
-            $txns = Transaction::where("type", "wallet")->where("user_id", $user->id)->get();
+            $txns = Transaction::where("type", "wallet")->where("user_id", $user->id);
+            if ($request->filled('keyword')) {
+                $txns->where("user_name", "like", "%" . $request->keyword . "%");
+                $txns->orWhere("status", "like", "%" . $request->keyword . "%");
+                $txns->orWhere("order_number", "like", "%" . $request->keyword . "%");
+                $txns->orWhere("txn_number", "like", "%" . $request->keyword . "%");
+                $txns->orWhere("amount", "like", "%" . $request->keyword . "%");
+            }
+            $txns = $txns->get();
             return response([
                 'status'    => true,
                 'message'   => 'Transactions fetched successfully.',

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\LandlordNotification;
 use App\Models\LandlordRating;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -58,6 +60,19 @@ class LandlordRatingController extends Controller
         $rating->contact = $user ? $user->mobile : '';
 
         if ($rating->save()) {
+            //notify landlord meeting is scheduled
+            $landlord_notify = new LandlordNotification;
+            $landlord_notify->landlord_id = $rating->landlord_id;
+            $landlord_notify->type = 'Notification';
+            $landlord_notify->title = 'New Review Notification';
+            $landlord_notify->content = $user->first . ' ' . $user->last . ' reviewed you.';
+            $landlord_notify->name = 'Rent A Roof';
+            $landlord_notify->redirect = '/landlord/dashboard';
+
+            $landlord_notify->save();
+
+            event(new NotificationSent($landlord_notify));
+
             return response([
                 'status'    => true,
                 'message'   => 'Rating and review saved successfully.',

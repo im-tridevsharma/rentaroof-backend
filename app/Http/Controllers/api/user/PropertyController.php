@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\DealUpdated;
 use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
@@ -15,6 +16,7 @@ use App\Models\Property;
 use App\Models\PropertyDeal;
 use App\Models\PropertyEssential;
 use App\Models\PropertyGallery;
+use App\Models\PropertyRatingAndReview;
 use App\Models\TenantNotification;
 use App\Models\User;
 use App\Models\UserSavedProperty;
@@ -349,6 +351,28 @@ class PropertyController extends Controller
             $properties = $properties->paginate(5);
         } else {
             $properties = $properties->get();
+        }
+
+        //loggedin user
+        $user = JWTAuth::user();
+        if ($user) {
+            $properties = $properties->map(function ($p) use ($user) {
+                $is_saved = UserSavedProperty::where("property_id", $p->id)->where("user_id", $user->id)->where("type", "saved")->first();
+                $is_favorite = UserSavedProperty::where("property_id", $p->id)->where("user_id", $user->id)->where("type", "favorite")->first();
+
+                if ($is_saved) {
+                    $p->is_saved = 'yes';
+                } else {
+                    $p->is_saved = 'no';
+                }
+                if ($is_favorite) {
+                    $p->is_favorite = 'yes';
+                } else {
+                    $p->is_favorite = 'no';
+                }
+
+                return $p;
+            });
         }
 
         return response([
@@ -1026,15 +1050,18 @@ class PropertyController extends Controller
     }
 
     //close deal
-    public function closeDeal($id)
+    public function closeDeal(Request $request, $id)
     {
         $user = JWTAuth::user();
         if ($user) {
             $deal = PropertyDeal::where("created_by", $user->id)->where("id", $id)->first();
             if ($deal) {
                 $deal->is_closed = 1;
+                $deal->conversationId = $request->has('convesationId') ? $request->conversationId : 0;
                 $deal->save();
                 $deal->property = Property::where("id", $deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
+
+                event(new DealUpdated($deal));
 
                 return response([
                     'status'    => true,
@@ -1063,8 +1090,11 @@ class PropertyController extends Controller
             $deal = PropertyDeal::where("offer_for", $user->id)->where("id", $id)->first();
             if ($deal) {
                 $deal->status = $request->status;
+                $deal->conversationId = $request->has('convesationId') ? $request->conversationId : 0;
                 $deal->save();
                 $deal->property = Property::where("id", $deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
+
+                event(new DealUpdated($deal));
 
                 return response([
                     'status'    => true,
@@ -1106,6 +1136,8 @@ class PropertyController extends Controller
 
                 $n->save();
 
+                event(new NotificationSent($n));
+
                 Meeting::where("create_id", $a->create_id)->delete();
             }
 
@@ -1119,6 +1151,31 @@ class PropertyController extends Controller
         //pay fee to ibo for this property
         $agreement = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
         if ($agreement) {
+        }
+
+        //points to referer on deal close
+        $agreement_ = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
+        $user = User::where("id", $agreement_->tenant_id)->first();
+        if ($user) {
+            $ruser = User::where("system_userid", $user->referral_code)->first();
+            if ($ruser) {
+                //save point
+                //get settings for points
+                $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
+                $s_point  = DB::table('settings')->where("setting_key", "referral_deal_closed_point")->first()->setting_value;
+
+                $spoints = floatval($s_point) * floatval($point_value);
+
+                DB::table('user_referral_points')->insert([
+                    "user_id" => $ruser->id,
+                    "role"    => $ruser->role,
+                    "title"   => 'You earned 10 points on deal closed for user ' . $user->first,
+                    "point_value" => $point_value,
+                    "points"      => $spoints,
+                    "type"        => "credit",
+                    "for"         => "deal closed"
+                ]);
+            }
         }
 
         return response([
@@ -1157,11 +1214,138 @@ class PropertyController extends Controller
         $popular = array_slice(array_keys($pids), 0, 5, true);
 
         $properties = Property::whereIn("id", $popular)->orderByRaw("FIELD(id, " . implode(',', $popular) . ")")->limit(5)->get();
+        //loggedin user
+        $user = JWTAuth::user();
+        if ($user) {
+            $properties = $properties->map(function ($p) use ($user) {
+                $is_saved = UserSavedProperty::where("property_id", $p->id)->where("user_id", $user->id)->where("type", "saved")->first();
+                $is_favorite = UserSavedProperty::where("property_id", $p->id)->where("user_id", $user->id)->where("type", "favorite")->first();
 
+                if ($is_saved) {
+                    $p->is_saved = 'yes';
+                } else {
+                    $p->is_saved = 'no';
+                }
+                if ($is_favorite) {
+                    $p->is_favorite = 'yes';
+                } else {
+                    $p->is_favorite = 'no';
+                }
+
+                return $p;
+            });
+        }
         return response([
             'status'    => true,
             'message'   => 'Top properties fetched successfully.',
             'data'      => $properties
         ], 200);
+    }
+
+    //ibo_properties_by_type
+    public function ibo_properties_by_type()
+    {
+        $user = JWTAuth::user();
+        if ($user && $user->role === 'ibo') {
+            $posted_properties = Property::where("posted_by", $user->id)->count();
+            $rented_properties = Agreement::where("ibo_id", $user->id)->count();
+            $visited_properties = Meeting::where("meeting_status", "visited")->where("user_id", $user->id)->count();
+
+            return response([
+                'status'    => true,
+                'message'   => 'Properties fetched successfully.',
+                'data'      => [
+                    [
+                        "type"  => "posted",
+                        "count" => $posted_properties
+                    ],
+                    [
+                        "type"  => "rented",
+                        "count" => $rented_properties
+                    ],
+                    [
+                        "type"  => "visited",
+                        "count" => $visited_properties
+                    ]
+                ]
+            ]);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Access not allowed.'
+        ], 401);
+    }
+
+    //landlord_properties_by_type
+    public function landlord_properties_by_type()
+    {
+        $user = JWTAuth::user();
+        if ($user && $user->role === 'landlord') {
+            $posted_properties = Property::where("posted_by", $user->id)->count();
+            $rented_properties = Agreement::where("landlord_id", $user->id)->count();
+            $visited_properties = Meeting::where("meeting_status", "visited")->where("created_by_id", $user->id)->count();
+
+            return response([
+                'status'    => true,
+                'message'   => 'Properties fetched successfully.',
+                'data'      => [
+                    [
+                        "type"  => "posted",
+                        "count" => $posted_properties
+                    ],
+                    [
+                        "type"  => "rented",
+                        "count" => $rented_properties
+                    ],
+                    [
+                        "type"  => "visited",
+                        "count" => $visited_properties
+                    ]
+                ]
+            ]);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Access not allowed.'
+        ], 401);
+    }
+
+    //visited properties
+    public function visitedProperties()
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $pids = Meeting::where("meeting_status", "visited");
+            if ($user->role === 'tenant') {
+                $pids->where("created_by_id", $user->id);
+            } else if ($user->role === 'ibo') {
+                $pids->where("user_id", $user->id);
+            }
+            $pids = $pids->pluck("property_id")->toArray();
+
+            $properties = Property::select(['id', 'property_code', 'short_description', 'is_closed', 'name', 'front_image', 'monthly_rent', 'bedrooms', 'bathrooms', 'floors', 'security_amount', 'posted_by'])->whereIn("id", $pids)->get()->map(function ($q) {
+                $ratings = PropertyRatingAndReview::where("property_id", $q->id)->get();
+                $total_rating = 0;
+                foreach ($ratings as $r) {
+                    $total_rating += $r->rating;
+                }
+                $q->landlord = User::find($q->posted_by)->first;
+                $q->rating = count($ratings) > 0 ? sprintf('%.1f', $total_rating / count($ratings)) : 0.0;
+                return $q;
+            });
+
+            return response([
+                'status'    => true,
+                'message'   => 'Visited properties are fetched successfully.',
+                'data'      => $properties
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User is not authorized.'
+        ], 401);
     }
 }
