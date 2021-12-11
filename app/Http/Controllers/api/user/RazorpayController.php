@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Razorpay\Api\Api;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class RazorpayController extends Controller
 {
@@ -255,6 +256,95 @@ class RazorpayController extends Controller
         return response([
             'status'    => false,
             'message'   => 'Property not found!'
+        ], 404);
+    }
+
+    //get amounts and points for user
+    public function points_and_amounts(Request $request)
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $totalc = 0;
+            $cpoints = DB::table('user_referral_points')->where("user_id", $user->id)->where("type", "credit")->get();
+            foreach ($cpoints as $p) {
+                $totalc += $p->points;
+            }
+            $totald = 0;
+            $dpoints = DB::table('user_referral_points')->where("user_id", $user->id)->where("type", "debit")->get();
+            foreach ($dpoints as $p) {
+                $totald += $p->points;
+            }
+
+            $points = $totalc - $totald;
+
+            $sptotal = 0;
+            $spayments = Transaction::where("type", "!=", "wallet")->where("status", "paid")->where(function ($q) use ($request, $user) {
+                $q->where("user_id", $user->id);
+                if ($request->filled('user') && $request->user === 'landlord') {
+                    $tenants = Agreement::where("landlord_id", $user->id)->pluck("tenant_id")->toArray();
+                    if (count($tenants) > 0) {
+                        $q->orWhereIn("user_id", $tenants);
+                    }
+                }
+                if ($request->filled('user') && $request->user === 'ibo') {
+                    $tenants = Agreement::where("ibo_id", $user->id)->pluck("tenant_id")->toArray();
+                    if (count($tenants) > 0) {
+                        $q->orWhereIn("user_id", $tenants);
+                    }
+                }
+            });
+
+
+            $spayments = $spayments->get();
+            foreach ($spayments as $sp) {
+                $sptotal += $sp->paid;
+            }
+
+            $pptotal = 0;
+            $ppayments = Transaction::where("type", "!=", "wallet")->where("status", "pending")->where(function ($q) use ($request, $user) {
+                $q->where("user_id", $user->id);
+                if ($request->filled('user') && $request->user === 'landlord') {
+                    $tenants = Agreement::where("landlord_id", $user->id)->pluck("tenant_id")->toArray();
+                    if (count($tenants) > 0) {
+                        $q->orWhereIn("user_id", $tenants);
+                    }
+                }
+                if ($request->filled('user') && $request->user === 'ibo') {
+                    $tenants = Agreement::where("ibo_id", $user->id)->pluck("tenant_id")->toArray();
+                    if (count($tenants) > 0) {
+                        $q->orWhereIn("user_id", $tenants);
+                    }
+                }
+            });
+
+            $ppayments = $ppayments->get();
+            foreach ($ppayments as $pp) {
+                $pptotal += $pp->pending;
+            }
+
+            return response([
+                'status'    => true,
+                'message'   => 'Points and transaction amount fetched successfully.',
+                'data'      => [
+                    [
+                        "name"  => 'points',
+                        "value" => $points
+                    ],
+                    [
+                        "name"  => "successful_payment",
+                        "value" => sprintf("%.2f", $sptotal)
+                    ],
+                    [
+                        "name"  => "pending_payment",
+                        "value" => sprintf("%.2f", $pptotal)
+                    ]
+                ]
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found.'
         ], 404);
     }
 }

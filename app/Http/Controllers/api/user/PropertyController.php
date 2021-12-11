@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\AdminNotificationSent;
 use App\Events\DealUpdated;
 use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\AdminNotification;
 use App\Models\Agreement;
 use App\Models\Amenity;
 use App\Models\IboNotification;
@@ -94,8 +96,8 @@ class PropertyController extends Controller
         $user = JWTAuth::user();
 
         if ($user) {
-            $properties = DB::table('property_verifications')->where("ibo_id", $user->id)->orderBy("id", "desc")->get()->map(function ($p) {
-                $property = Property::find($p->property_id);
+            $properties = DB::table('property_verifications')->where("ibo_id", $user->id)->where("status", "!=", "rejected")->orderBy("id", "desc")->get()->map(function ($p) {
+                $property = Property::select(["front_image", "id", "name", "address_id", "property_code", "posted_by", "is_closed", "is_approved", "country_name", "state_name", "city_name"])->find($p->property_id);
                 if ($property) {
                     $p->property = $property;
                     $p->landlord = User::find($property->posted_by);
@@ -124,6 +126,79 @@ class PropertyController extends Controller
             $data = [
                 "is_verifiable" => !empty($request->status) ? $request->status : 0,
                 "issues_in_verification"    => !empty($request->issue) ? $request->issue : '',
+                "updated_at"    => date("Y-m-d H:i:s")
+            ];
+
+            DB::table('property_verifications')->where("id", $id)->update($data);
+
+            $returndata = DB::table('property_verifications')->where("id", $id)->first();
+            if ($returndata) {
+                $property = Property::find($returndata->property_id);
+                $returndata->property = $property;
+                $returndata->landlord = User::find($property->posted_by);
+                $returndata->address  = Address::find($property->address_id);
+            }
+
+            if ($request->filled('status') && $request->status === 1) {
+                //assign points to ibo when verify
+                $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
+                $v_point  = DB::table('settings')->where("setting_key", "ibo_property_verification_point")->first()->setting_value;
+
+                $spoints = floatval($v_point) * floatval($point_value);
+
+                $ibo = User::find($is->ibo_id);
+                $property = Property::find($is->property_id);
+                //point data
+                $sdata = [
+                    "user_id"   => $ibo->id,
+                    "role"      => $ibo->role,
+                    "title"     => "You earned " . $v_point . " points for verifying property - " . $property->name . ' (' . $property->property_code . ')',
+                    "point_value"   => $point_value,
+                    "points"    => $v_point,
+                    "amount_earned" => $spoints,
+                    "type"  => "credit",
+                    "for"  => "referral",
+                    "created_at"    => date("Y-m-d H:i:s"),
+                    "updated_at"    => date("Y-m-d H:i:s"),
+                ];
+
+                DB::table('user_referral_points')->insert($sdata);
+
+                //notification to ibo
+                $ibo_notify = new IboNotification;
+                $ibo_notify->ibo_id = $ibo->id;
+                $ibo_notify->type = 'Urgent';
+                $ibo_notify->title = 'Coins Earned';
+                $ibo_notify->content = "You earned " . $v_point . " points for verifying property - " . $property->name . ' (' . $property->property_code . ')';
+                $ibo_notify->name = 'Rent A Roof';
+                $ibo_notify->redirect = '/ibo/payment';
+
+                $ibo_notify->save();
+
+                event(new NotificationSent($ibo_notify));
+            }
+
+            return response([
+                'status'    => true,
+                'message'   => 'Status updated successfully.',
+                'data'      => $returndata
+            ], 200);
+        }
+
+        return  response([
+            'status'    => false,
+            'message'   => 'Not assigned to any ibo!'
+        ], 404);
+    }
+
+    //accept_or_reject_verification
+    public function accept_or_reject_verification(Request $request, $id)
+    {
+        $is = DB::table('property_verifications')->where("id", $id)->first();
+        if ($is) {
+            $data = [
+                "status" => !empty($request->status) ? $request->status : 'pending',
+                "reason_for_rejection"    => !empty($request->reason) ? $request->reason : '',
                 "updated_at"    => date("Y-m-d H:i:s")
             ];
 
@@ -240,6 +315,16 @@ class PropertyController extends Controller
                         event(new NotificationSent($ibo_notify));
                     }
                 }
+
+                //notify admin
+                $an = new AdminNotification;
+                $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
+                $an->type  = 'Urgent';
+                $an->title = 'New Meeting Request';
+                $an->redirect = '/admin/meetings';
+                $an->save();
+                event(new AdminNotificationSent($an));
+
 
                 //notify user meeting is scheduled
                 $user_notify = new TenantNotification;
@@ -504,6 +589,23 @@ class PropertyController extends Controller
             $property->available_immediately = 1;
         }
 
+        //inspections
+        if ($request->filled('inspection_days')) {
+            $property->inspection_days = $request->inspection_days;
+        } else {
+            $property->inspection_days = '';
+        }
+        if ($request->filled('inspection_time_from')) {
+            $property->inspection_time_from = $request->inspection_time_from;
+        } else {
+            $property->inspection_time_from = '';
+        }
+        if ($request->filled('inspection_time_to')) {
+            $property->inspection_time_to = $request->inspection_time_to;
+        } else {
+            $property->inspection_time_to = '';
+        }
+
         $property->description = $request->description ? $request->description : '';
 
         $property->front_image = '';
@@ -659,6 +761,24 @@ class PropertyController extends Controller
 
         $property = Property::find($id);
         if ($property) {
+            //check is he authorized to edit this property
+            $l_user = JWTAuth::user();
+            if ($l_user->id !== $property->posted_by) {
+                $pv = DB::table('property_verifications')->where("property_id", $property->id)->where("ibo_id", $l_user->id)->first();
+                if ($pv) {
+                    if ($pv->property_id !== $property->id || $pv->status !== 'accepted') {
+                        return response([
+                            'status'    => false,
+                            'message'   => 'Not Authorized to edit this property.'
+                        ], 401);
+                    }
+                } else {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'Not Authorized to edit this property.'
+                    ], 401);
+                }
+            }
 
             $property->name = $request->name;
             $property->short_description = $request->short_description;
@@ -696,6 +816,17 @@ class PropertyController extends Controller
 
             if (isset($request->available_immediately) && $request->available_immediately == 'on') {
                 $property->available_immediately = 1;
+            }
+
+            //inspections
+            if ($request->filled('inspection_days')) {
+                $property->inspection_days = $request->inspection_days;
+            }
+            if ($request->filled('inspection_time_from')) {
+                $property->inspection_time_from = $request->inspection_time_from;
+            }
+            if ($request->filled('inspection_time_to')) {
+                $property->inspection_time_to = $request->inspection_time_to;
             }
 
             $property->description = $request->description ? $request->description : $property->description;
@@ -755,6 +886,25 @@ class PropertyController extends Controller
         $p = Property::find($request->propertyId);
         $p->amenities = $amenities;
         $p->preferences = $preferences;
+
+        //check is he authorized to edit this property
+        $l_user = JWTAuth::user();
+        if ($l_user->id !== $p->posted_by) {
+            $pv = DB::table('property_verifications')->where("property_id", $p->id)->where("ibo_id", $l_user->id)->first();
+            if ($pv) {
+                if ($pv->property_id !== $p->id || $pv->status !== 'accepted') {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'Not Authorized to edit this property.'
+                    ], 401);
+                }
+            } else {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Not Authorized to edit this property.'
+                ], 401);
+            }
+        }
 
         if ($p->save()) {
             return response([
@@ -843,6 +993,7 @@ class PropertyController extends Controller
         }
 
         $essential = PropertyEssential::find($id);
+        $essential = $essential ? $essential : new PropertyEssential;
 
         if ($essential) {
             $essential->property_id = $request->propertyId;
@@ -855,8 +1006,28 @@ class PropertyController extends Controller
             $essential->restaurent = isset($request->restaurent) ? $request->restaurent : $essential->restaurent;
             $essential->customs = json_encode($customs);
 
+            $p = Property::find($request->propertyId);
+
+            //check is he authorized to edit this property
+            $l_user = JWTAuth::user();
+            if ($l_user->id !== $p->posted_by) {
+                $pv = DB::table('property_verifications')->where("property_id", $p->id)->where("ibo_id", $l_user->id)->first();
+                if ($pv) {
+                    if ($pv->property_id !== $p->id || $pv->status !== 'accepted') {
+                        return response([
+                            'status'    => false,
+                            'message'   => 'Not Authorized to edit this property.'
+                        ], 401);
+                    }
+                } else {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'Not Authorized to edit this property.'
+                    ], 401);
+                }
+            }
+
             if ($essential->save()) {
-                $p = Property::find($request->propertyId);
                 $p->property_essential_id = $essential->id;
                 $p->save();
                 return response([
@@ -1147,6 +1318,17 @@ class PropertyController extends Controller
                 'data'      => $property->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed'])
             ], 200);
         }
+
+        //notify admin
+        $an = new AdminNotification;
+        $an->content = 'Property - ' . $property->property_code . '. has been closed by owner.';
+        $an->type  = 'Urgent';
+        $an->title = 'Property Closed';
+        $an->redirect = '/admin/meetings';
+
+        $an->save();
+
+        event(new AdminNotificationSent($an));
 
         //pay fee to ibo for this property
         $agreement = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();

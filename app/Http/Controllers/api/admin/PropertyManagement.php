@@ -149,10 +149,15 @@ class PropertyManagement extends Controller
             $is = DB::table('property_verifications')->where("property_id", $property->id)->first();
 
             if ($is) {
+                $data['status'] = 'pending';
+                $data['reason_for_rejection'] = '';
+
+                DB::table('property_verifications')->where("id", $is->id)->update($data);
                 return response([
-                    'status'    => false,
-                    'message'   => 'Already assigned to an ibo!',
-                ], 404);
+                    'status'    => true,
+                    'message'   => 'Assigned for verification successfully.',
+                    'data'      => $data
+                ], 200);
             }
 
             DB::table('property_verifications')->insert($data);

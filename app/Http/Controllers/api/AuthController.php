@@ -103,6 +103,10 @@ class AuthController extends Controller
             ], 500);
         }
 
+        if ($request->filled('remember_me') && $request->remember_me === 'yes') {
+            JWTAuth::factory()->setTTL(60 * 24 * 356);
+        }
+
         $user = JWTAuth::user();
         $user->is_logged_in = 1;
         $user->save();

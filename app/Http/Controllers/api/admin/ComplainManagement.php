@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\api\admin;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\Complain;
+use App\Models\TenantNotification;
 use Illuminate\Http\Request;
 
 class ComplainManagement extends Controller
@@ -78,6 +80,18 @@ class ComplainManagement extends Controller
         if ($complain) {
             $complain->status = $request->status;
             $complain->save();
+
+            //notify user 
+            $user_notify = new TenantNotification;
+            $user_notify->tenant_id = $complain->user_id;
+            $user_notify->type = 'Urgent';
+            $user_notify->title = 'Complains Status Changed';
+            $user_notify->content = 'You complain status has been changed to: ' . $request->status;
+            $user_notify->name = 'Rent A Roof';
+            $user_notify->redirect = '/tenant/complain_management';
+            $user_notify->save();
+            event(new NotificationSent($user_notify));
+
             return response([
                 'status'    => true,
                 'message'   => 'Status updated successfully.',

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\AdminNotificationSent;
 use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\AdminNotification;
 use App\Models\Agreement;
 use App\Models\IboNotification;
 use App\Models\LandlordNotification;
@@ -113,6 +115,60 @@ class MeetingController extends Controller
         ], 500);
     }
 
+    //meeting_count_for_mobile
+    public function meeting_count_for_mobile_all()
+    {
+        $user = JWTAuth::user();
+        $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc");
+        if ($user && $user->role === 'tenant') {
+            $meetings->where("meeting_status", '!=', 'pending');
+            $meetings->where("user_id", '!=', 0);
+        }
+
+        $meetings = $meetings->get();
+        $today = [];
+        $upcoming = [];
+        $history = [];
+
+        foreach ($meetings as $m) {
+            if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                array_push($today, $m);
+            }
+            if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
+                array_push($upcoming, $m);
+            }
+            if ($m->meeting_history !== '' && $m->meeting_history !== '[]') {
+                array_push($history, $m);
+            }
+        }
+
+        if ($meetings) {
+            return response([
+                'status'    => true,
+                'message'   => 'Meetings fetched successfully.',
+                'data'      => [
+                    [
+                        "name"  => "today",
+                        "value" => $today
+                    ],
+                    [
+                        "name"  => "upcoming",
+                        "value" => $upcoming
+                    ],
+                    [
+                        "name"  => "history",
+                        "value" => $history
+                    ]
+                ]
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Something went wrong.'
+        ], 500);
+    }
+
     /**get meetings of landlord belonged property */
     public function landlord_meetings($id)
     {
@@ -159,12 +215,13 @@ class MeetingController extends Controller
         if ($landlord) {
             //fetch properties of landlord
             $properties = Property::where("posted_by", $landlord->id)->get();
+            $today = 0;
+            $upcoming = 0;
+            $history = 0;
             foreach ($properties as $p) {
                 if (Meeting::where("property_id", $p->id)->count() > 0) {
                     $allm = Meeting::where("property_id", $p->id)->get();
-                    $today = 0;
-                    $upcoming = 0;
-                    $history = 0;
+
                     foreach ($allm as $m) {
                         if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
                             $today++;
@@ -181,6 +238,60 @@ class MeetingController extends Controller
             return response([
                 'status'    => true,
                 'message'   => 'Meetings count fetched successfully.',
+                'data'      => [
+                    [
+                        "name"  => "today",
+                        "value" => $today
+                    ],
+                    [
+                        "name"  => "upcoming",
+                        "value" => $upcoming
+                    ],
+                    [
+                        "name"  => "history",
+                        "value" => $history
+                    ]
+                ]
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Landlord not found!'
+        ], 404);
+    }
+
+
+    /**get meetings of landlord belonged property for mobile */
+    public function landlord_meetings_mobile_all($id)
+    {
+        $landlord = User::find($id);
+        if ($landlord) {
+            //fetch properties of landlord
+            $properties = Property::where("posted_by", $landlord->id)->get();
+            $today = [];
+            $upcoming = [];
+            $history = [];
+            foreach ($properties as $p) {
+                if (Meeting::where("property_id", $p->id)->count() > 0) {
+                    $allm = Meeting::where("property_id", $p->id)->get();
+
+                    foreach ($allm as $m) {
+                        if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                            array_push($today, $m);
+                        }
+                        if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
+                            array_push($upcoming, $m);
+                        }
+                        if ($m->meeting_history !== '' && $m->meeting_history !== '[]') {
+                            array_push($history, $m);
+                        }
+                    }
+                }
+            }
+            return response([
+                'status'    => true,
+                'message'   => 'Meetings fetched successfully.',
                 'data'      => [
                     [
                         "name"  => "today",
@@ -478,6 +589,16 @@ class MeetingController extends Controller
 
                     event(new NotificationSent($ibo_notify));
                 }
+                //notify admin
+                $an = new AdminNotification;
+                $an->content = $meeting->meeting_status === 'approved' ? 'Meeting request for property - ' . $property->property_code . ' has been accepted by IBO - ' . $ibo->first . ' ' . $ibo->last : 'Meeting status updated';
+                $an->type  = 'Urgent';
+                $an->title = $meeting->meeting_status === 'approved' ? 'Meeting Accepted.' : 'Meeting Status Changed to ' . $meeting->meeting_status;
+
+                $an->redirect = '/admin/meetings';
+                $an->save();
+                event(new AdminNotificationSent($an));
+
 
                 //notify landlord meeting is scheduled
                 $landlord_notify = new LandlordNotification;
@@ -581,6 +702,15 @@ class MeetingController extends Controller
 
                     event(new NotificationSent($ibo_notify));
                 }
+
+                //notify admin
+                $an = new AdminNotification;
+                $an->content = $user->role === 'ibo' ? 'Meeting for property - ' . $property->property_code . ' has been rescheduled by IBO - ' . $ibo->first . ' ' . $ibo->last . ' at ' . date('d-m-Y H:i', strtotime($meeting->start_time)) : 'Appointment for property - ' . $property->property_code . ' has been rescheduled by User - ' . $user->first . ' ' . $user->last . ' at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
+                $an->type  = 'Urgent';
+                $an->title = 'Meeting Rescheduled';
+                $an->redirect = '/admin/meetings';
+                $an->save();
+                event(new AdminNotificationSent($an));
 
                 //notify landlord meeting is scheduled
                 $landlord_notify = new LandlordNotification;

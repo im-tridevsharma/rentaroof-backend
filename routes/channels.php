@@ -19,6 +19,11 @@ Broadcast::channel('notification', function ($user) {
     return $user;
 });
 
+Broadcast::channel('admin', function ($user) {
+    return $user->role === 'admin' ? true : false;
+});
+
+
 Broadcast::channel('chat-screen', function ($user) {
     return $user;
 });

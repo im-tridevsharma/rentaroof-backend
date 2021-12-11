@@ -95,7 +95,7 @@ class ConversationController extends Controller
                 $notify->title = 'Chat Request Status';
                 $notify->content = $receiver->first . ' ' . $receiver->last . ' has ' . $changed . ' your chat request.';
                 $notify->name = 'Rent A Roof';
-                $notify->redirect = '/' . $sender->role . '/chat';
+                $notify->redirect = '/' . $sender->role . '/chat#' . $conversation->id;
 
                 $notify->save();
 
@@ -161,7 +161,7 @@ class ConversationController extends Controller
                 $user_notify->content = $sender['first'] . ' ' . $sender['last'] . ' wants to chat with you. Please visit chat screen!';
                 $user_notify->type = 'Urgent';
                 $user_notify->name = 'Rent A Roof';
-                $user_notify->redirect = '/tenant/chat';
+                $user_notify->redirect = '/tenant/chat#' . $conversation->id;
 
                 $user_notify->save();
                 event(new NotificationSent($user_notify));
@@ -175,7 +175,7 @@ class ConversationController extends Controller
                 $ibo_notify->content = $sender['first'] . ' ' . $sender['last'] . ' wants to chat with you. Please visit chat screen!';
                 $ibo_notify->type = 'Urgent';
                 $ibo_notify->name = 'Rent A Roof';
-                $ibo_notify->redirect = '/ibo/chat';
+                $ibo_notify->redirect = '/ibo/chat#' . $conversation->id;
 
                 $ibo_notify->save();
                 event(new NotificationSent($ibo_notify));
@@ -189,7 +189,7 @@ class ConversationController extends Controller
                 $landlord_notify->content = $sender['first'] . ' ' . $sender['last'] . ' wants to chat with you. Please visit chat screen!';
                 $landlord_notify->type = 'Urgent';
                 $landlord_notify->name = 'Rent A Roof';
-                $landlord_notify->redirect = '/landlord/chat';
+                $landlord_notify->redirect = '/landlord/chat#' . $conversation->id;
 
                 $landlord_notify->save();
                 event(new NotificationSent($landlord_notify));

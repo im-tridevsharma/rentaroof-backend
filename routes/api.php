@@ -66,6 +66,7 @@ Route::get("properties/top", [PropertyController::class, 'top_properties']);
 Route::get("properties/search", [PropertyController::class, 'search']);
 Route::get("properties/for_verification", [PropertyController::class, 'for_verification'])->middleware('jwt.verify');
 Route::post("properties/change_verification_status/{id}", [PropertyController::class, 'change_verification_status'])->middleware('jwt.verify');
+Route::post("properties/accept_or_reject_verification/{id}", [PropertyController::class, 'accept_or_reject_verification'])->middleware('jwt.verify');
 Route::get("properties/search_by_coords", [PropertyController::class, 'search_by_coords']);
 Route::get("properties/similar/{code}/{limit}", [PropertyController::class, 'get_similar_properties']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);
@@ -171,6 +172,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post('chat/messages', [ConversationController::class, 'sendMessage']);
     Route::post('chat/conversations/status', [ConversationController::class, 'change_status']);
 
+    Route::get('users/points_and_payment', [RazorpayController::class, 'points_and_amounts']);
     Route::put('users/password/{id}', [UserController::class, 'password']);
     Route::get('users/search', [UserController::class, 'search']);
     Route::resource('users/searches', SaveSearches::class);
@@ -184,7 +186,9 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post('meetings/update/{id}/reschedule', [MeetingController::class, 'reschedule']);
     Route::get('meetings/landlord/{id}', [MeetingController::class, 'landlord_meetings']);
     Route::get('meetings/for_mobile', [MeetingController::class, 'meeting_count_for_mobile']);
+    Route::get('meetings/for_mobile/details', [MeetingController::class, 'meeting_count_for_mobile_all']);
     Route::get('meetings/for_mobile/landlord/{id}', [MeetingController::class, 'landlord_meetings_mobile']);
+    Route::get('meetings/for_mobile/landlord/{id}/details', [MeetingController::class, 'landlord_meetings_mobile_all']);
     Route::resource('meetings', MeetingController::class);
 
     //Trainning
@@ -198,6 +202,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post("settings/{id}", [SettingController::class, 'set']);
     Route::post("settings/account_status/{id}", [SettingController::class, 'change_account_status']);
     //properties
+    Route::get('deals', [UserController::class, 'getDeals']);
     Route::get('properties/visited', [PropertyController::class, 'visitedProperties']);
     Route::get("properties/closed/{code}", [PropertyController::class, 'closeProperty']);
     Route::get("properties/open/{code}", [PropertyController::class, 'openProperty']);
@@ -205,6 +210,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post("properties/amenities", [PropertyController::class, 'amenity']);
     Route::post("properties/essentials", [PropertyController::class, 'essential']);
     Route::put("properties/essentials/{id}", [PropertyController::class, 'essentialUpdate']);
+    Route::get("properties/gallery/{id}", [PropertyGalleryController::class, 'getPropertyGallery']);
     Route::post("properties/total", [PropertyController::class, 'total']);
     Route::resource('properties', PropertyController::class);
     Route::resource('properties/galleries', PropertyGalleryController::class);

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\AdminNotificationSent;
 use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\AdminNotification;
 use App\Models\Agreement;
 use App\Models\IboNotification;
 use App\Models\Property;
@@ -107,6 +109,16 @@ class AgreementController extends Controller
         if ($agreement->save()) {
             //notify user and ibo for this agreement
             $property = Property::find($agreement->property_id);
+
+            //notify admin
+            $an = new AdminNotification;
+            $an->content = 'Agreement created for property - ' . $property->property_code . '. Please check now.';
+            $an->type  = 'Notification';
+            $an->title = 'Agreement Created🎉';
+            $an->redirect = '/admin/agreements';
+            $an->save();
+            event(new AdminNotificationSent($an));
+
             //notify user meeting is scheduled
             $user_notify = new TenantNotification;
             $user_notify->tenant_id = $agreement->tenant_id;

@@ -5,12 +5,14 @@ namespace App\Http\Controllers\api\user;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\KycVerification;
+use App\Models\PropertyDeal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserController extends Controller
 {
@@ -260,6 +262,10 @@ class UserController extends Controller
         ], 404);
     }
 
+    public function show($id)
+    {
+    }
+
     /**
      * Remove the specified resource from storage.
      *
@@ -272,5 +278,29 @@ class UserController extends Controller
             'status'   => false,
             'message'  => "Api endpoint is not supported."
         ]);
+    }
+
+    //getDeals
+    public function getDeals()
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $deals = PropertyDeal::where("created_by", $user->id)->get()->map(function ($d) {
+                $for = User::select(["first", "last"])->find($d->offer_for);
+                $d->user = $for;
+                return $d;
+            });
+
+            return response([
+                'status'    => true,
+                'message'   => 'Deals fetched successfully.',
+                'data'      => $deals
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found!'
+        ], 404);
     }
 }

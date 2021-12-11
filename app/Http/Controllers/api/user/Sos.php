@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\AdminNotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\AdminNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -65,7 +67,14 @@ class Sos extends Controller
         $sos->status_history    = json_encode([]);
 
         if ($sos->save()) {
-            //code to notify user and admin
+            //notify admin
+            $an = new AdminNotification;
+            $an->content = 'SOS Alert by user: ' . $user->first . ' ' . $user->last;
+            $an->type  = 'Urgent';
+            $an->title = 'SOS Alert';
+            $an->redirect = '/admin/sos';
+            $an->save();
+            event(new AdminNotificationSent($an));
 
             return response([
                 'status'    => true,

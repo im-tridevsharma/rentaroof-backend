@@ -134,6 +134,7 @@ class PropertyAddressController extends Controller
         }
 
         $address = Address::find($id);
+        $address = $address ? $address : new Address;
 
         if ($address) {
             $address->landmark = isset($request->landmark) ? $request->landmark : $address->landmark;

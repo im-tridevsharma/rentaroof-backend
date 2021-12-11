@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\AdminNotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\AdminNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -74,6 +76,15 @@ class Enquiry extends Controller
         $enquiry->system_ip = $request->ip();
 
         if ($enquiry->save()) {
+            //notify admin
+            $an = new AdminNotification;
+            $an->content = 'You have new enquiry by user: ' . $request->name;
+            $an->type  = 'Urgent';
+            $an->title = 'New Enquiry Arrived';
+            $an->redirect = '/admin/enquiries';
+            $an->save();
+            event(new AdminNotificationSent($an));
+
             return response([
                 'status'    => true,
                 'message'   => 'Enquiry saved successfully.',

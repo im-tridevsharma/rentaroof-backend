@@ -1,5 +1,6 @@
 <?php
 
+use App\Events\AdminNotificationSeen;
 use App\Http\Controllers\api\admin\AgreementManagement;
 use Illuminate\Support\Facades\Route;
 
@@ -21,11 +22,68 @@ use App\Http\Controllers\api\admin\RoleManagement;
 use App\Http\Controllers\api\admin\SettingController;
 use App\Http\Controllers\api\admin\SosManagement;
 use App\Http\Controllers\api\admin\TrainingManagement;
+use App\Models\AdminNotification;
+use Illuminate\Http\Request;
 
 //handle db query
 Route::get('db_query', function () {
     return '-';
 })->middleware('admin');
+
+Route::get('notifications', function (Request $request) {
+    $notification = AdminNotification::orderBy("created_at", "desc");
+    if ($request->filled('count')) {
+        $notification->where("is_seen", 0);
+        $notification = $notification->count();
+    } else {
+        $notification = $notification->get();
+    }
+
+    return response([
+        'status'    => true,
+        'message'   => 'Notifications fetched successfully.',
+        'data'      => $notification
+    ], 200);
+});
+
+Route::delete('notifications/{id}', function ($id) {
+    $notification = AdminNotification::find($id);
+    if ($notification) {
+        if ($notification->is_seen === 0) {
+            event(new AdminNotificationSeen($notification));
+        }
+        $notification->delete();
+        return response([
+            'status'    => true,
+            'message'   => 'Notifications deleted successfully.',
+            'data'      => $notification
+        ], 200);
+    }
+
+    return response([
+        'status'    => false,
+        'message'   => 'Notifications not found.',
+    ], 404);
+});
+
+Route::get('notifications/seen/{id}', function ($id) {
+    $notification = AdminNotification::find($id);
+    if ($notification) {
+        $notification->is_seen = 1;
+        $notification->save();
+        event(new AdminNotificationSeen($notification));
+        return response([
+            'status'    => true,
+            'message'   => 'Notifications seen successfully.',
+            'data'      => $notification
+        ], 200);
+    }
+
+    return response([
+        'status'    => false,
+        'message'   => 'Notifications not found.',
+    ], 404);
+});
 
 //manage countries
 Route::resource('countries', CountryManagement::class)->middleware('admin');
