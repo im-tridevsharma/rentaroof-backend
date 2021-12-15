@@ -29,6 +29,7 @@ use App\Http\Controllers\api\user\TrainingController;
 use App\Http\Controllers\api\user\UserController;
 use App\Http\Controllers\api\user\UserSavedPropertyController;
 use App\Http\Controllers\api\user\WalletController;
+use App\Models\Agreement;
 use App\Models\Amenity;
 use App\Models\City;
 use App\Models\Country;
@@ -79,6 +80,7 @@ Route::get('landlord/properties_by_type', [PropertyController::class, 'landlord_
 Route::get("properties/ibo/{id}", [PropertyController::class, 'property_by_user']);
 Route::get("properties/landlord/{id}", [PropertyController::class, 'property_by_user']);
 
+Route::get('earnings/ibo', [UserController::class, 'get_ibo_earnings']);
 Route::get('ratings/ibo/all/{id}', [IboRatingController::class, 'all']);
 Route::resource('ratings/ibo', IboRatingController::class);
 Route::get('ibo/notifications/unseen', [IboNotificationController::class, 'unseenNotification']);
@@ -98,6 +100,7 @@ Route::get('ratings/tenant/all/{id}', [TenantRatingController::class, 'all']);
 Route::resource('ratings/tenant', TenantRatingController::class);
 Route::get('users/referrals', [ReferralPointController::class, 'getReferrals']);
 
+Route::get('tenant/upcoming_payments', [AgreementController::class, 'upcoming_payments']);
 Route::resource('agreements', AgreementController::class);
 
 Route::get("countries", function () {

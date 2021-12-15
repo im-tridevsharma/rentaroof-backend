@@ -2,9 +2,15 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\AdminNotificationSent;
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\AdminNotification;
 use App\Models\Agreement;
+use App\Models\IboNotification;
+use App\Models\LandlordNotification;
 use App\Models\Property;
+use App\Models\TenantNotification;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\Wallet;
@@ -125,8 +131,48 @@ class RazorpayController extends Controller
                             $agreement->next_due = Carbon::parse($agreement->next_due)->addMonths(12);
                         }
 
-
                         $agreement->save();
+
+                        //notify user
+                        $user_notify = new TenantNotification;
+                        $user_notify->tenant_id = $agreement->tenant_id;
+                        $user_notify->type = 'Urgent';
+                        $user_notify->title = 'Payment Successful.';
+                        $user_notify->content = $payment->message;
+                        $user_notify->name = 'Rent A Roof';
+                        $user_notify->redirect = '/tenant/payment';
+                        $user_notify->save();
+                        event(new NotificationSent($user_notify));
+
+                        //notify landlord 
+                        $landlord_notify = new LandlordNotification;
+                        $landlord_notify->landlord_id = $agreement->landlord_id;
+                        $landlord_notify->type = 'Urgent';
+                        $landlord_notify->title = 'Successful Payment';
+                        $landlord_notify->content = $payment->message;
+                        $landlord_notify->name = 'Rent A Roof';
+                        $landlord_notify->redirect = '/landlord/payment';
+                        $landlord_notify->save();
+                        event(new NotificationSent($landlord_notify));
+
+                        //send notification to ibo 
+                        $ibo_notify = new IboNotification;
+                        $ibo_notify->ibo_id = $agreement->ibo_id;
+                        $ibo_notify->type = 'Urgent';
+                        $ibo_notify->title = 'Payment Successfull.';
+                        $ibo_notify->content = $payment->message;
+                        $ibo_notify->name = 'Rent A Roof';
+                        $ibo_notify->redirect = '/ibo/payment';
+                        $ibo_notify->save();
+                        event(new NotificationSent($ibo_notify));
+
+                        //notify admin
+                        $an = new AdminNotification;
+                        $an->content = $payment->message;
+                        $an->type  = 'Urgent';
+                        $an->title = 'New Payment';
+                        $an->save();
+                        event(new AdminNotificationSent($an));
                     }
 
                     if ($payment->type === 'wallet') {
@@ -328,7 +374,7 @@ class RazorpayController extends Controller
                 'data'      => [
                     [
                         "name"  => 'points',
-                        "value" => $points
+                        "value" => strval($points)
                     ],
                     [
                         "name"  => "successful_payment",

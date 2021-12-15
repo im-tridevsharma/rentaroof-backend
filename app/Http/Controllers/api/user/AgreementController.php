@@ -307,4 +307,38 @@ class AgreementController extends Controller
             'message'   => 'Agreement not found!'
         ], 404);
     }
+
+    //upcoming payments
+    public function upcoming_payments()
+    {
+        $user = JWTAuth::user();
+
+        if ($user) {
+            $payments = [];
+            $agreements = Agreement::whereRaw("next_due < end_date")->where("tenant_id", $user->id)->get();
+
+            foreach ($agreements as $a) {
+                $data = [
+                    "amount"    => $a->payment_amount,
+                    "type"      =>  'rent',
+                    "type_id"   => $a->id,
+                    "next_due"  => $a->next_due,
+                    "message"   => 'Rent for the month ' . date('d-m-Y', strtotime($a->next_due)) . ' of Property: ' . Property::find($a->property_id)->property_code
+                ];
+
+                array_push($payments, $data);
+            }
+
+            return response([
+                'status'    => true,
+                'message'   => 'Upcoming payments fetched successfully.',
+                'data'      => $payments
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Access not allowed.'
+        ], 401);
+    }
 }

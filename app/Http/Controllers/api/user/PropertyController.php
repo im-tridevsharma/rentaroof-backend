@@ -10,6 +10,7 @@ use App\Models\Address;
 use App\Models\AdminNotification;
 use App\Models\Agreement;
 use App\Models\Amenity;
+use App\Models\IboEarning;
 use App\Models\IboNotification;
 use App\Models\LandlordNotification;
 use App\Models\Meeting;
@@ -1312,52 +1313,69 @@ class PropertyController extends Controller
                 Meeting::where("create_id", $a->create_id)->delete();
             }
 
+            //notify admin
+            $an = new AdminNotification;
+            $an->content = 'Property - ' . $property->property_code . '. has been closed by owner.';
+            $an->type  = 'Urgent';
+            $an->title = 'Property Closed';
+            $an->redirect = '/admin/meetings';
+
+            $an->save();
+
+            event(new AdminNotificationSent($an));
+
+            //pay fee to ibo for this property
+            $agreement = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
+            if ($agreement) {
+                $deal = PropertyDeal::where("property_id", $property->id)->where("status", "accepted")->first();
+                $isearning = IboEarning::where("ibo_id", $agreement->ibo_id)->where("agreement_id", $agreement->id)->where("deal_id", $deal->id)->where("property_id", $agreement->property_id)->count();
+
+                if (!$isearning) {
+                    $earning = new IboEarning;
+                    $earning->ibo_id = $agreement->ibo_id;
+                    $earning->deal_id = $deal ? $deal->id : 0;
+                    $earning->property_id = $agreement->property_id;
+                    $earning->agreement_id = $agreement->id;
+                    $earning->amount_percentage = $agreement->fee_percentage;
+                    $earning->amount = $agreement->fee_amount;
+
+                    $earning->save();
+                }
+            }
+
+            //points to referer on deal close
+            $agreement_ = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
+            $user = User::where("id", $agreement_->tenant_id)->first();
+            if ($user) {
+                $ruser = User::where("system_userid", $user->referral_code)->first();
+                if ($ruser) {
+                    //save point
+                    //get settings for points
+                    $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
+                    $s_point  = DB::table('settings')->where("setting_key", "referral_deal_closed_point")->first()->setting_value;
+
+                    $spoints = floatval($s_point) * floatval($point_value);
+
+                    DB::table('user_referral_points')->insert([
+                        "user_id" => $ruser->id,
+                        "role"    => $ruser->role,
+                        "title"   => 'You earned 10 points on deal closed for user ' . $user->first,
+                        "point_value" => $point_value,
+                        "points"      => $s_point,
+                        "type"        => "credit",
+                        "amount_earned" => $spoints,
+                        "for"         => "deal closed",
+                        "created_at"  => date("Y-m-d H:i:s"),
+                        "updated_at"  => date("Y-m-d H:i:s")
+                    ]);
+                }
+            }
+
             return response([
                 'status'    => true,
                 'message'   => 'Property closed successfully.',
                 'data'      => $property->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed'])
             ], 200);
-        }
-
-        //notify admin
-        $an = new AdminNotification;
-        $an->content = 'Property - ' . $property->property_code . '. has been closed by owner.';
-        $an->type  = 'Urgent';
-        $an->title = 'Property Closed';
-        $an->redirect = '/admin/meetings';
-
-        $an->save();
-
-        event(new AdminNotificationSent($an));
-
-        //pay fee to ibo for this property
-        $agreement = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
-        if ($agreement) {
-        }
-
-        //points to referer on deal close
-        $agreement_ = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
-        $user = User::where("id", $agreement_->tenant_id)->first();
-        if ($user) {
-            $ruser = User::where("system_userid", $user->referral_code)->first();
-            if ($ruser) {
-                //save point
-                //get settings for points
-                $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
-                $s_point  = DB::table('settings')->where("setting_key", "referral_deal_closed_point")->first()->setting_value;
-
-                $spoints = floatval($s_point) * floatval($point_value);
-
-                DB::table('user_referral_points')->insert([
-                    "user_id" => $ruser->id,
-                    "role"    => $ruser->role,
-                    "title"   => 'You earned 10 points on deal closed for user ' . $user->first,
-                    "point_value" => $point_value,
-                    "points"      => $spoints,
-                    "type"        => "credit",
-                    "for"         => "deal closed"
-                ]);
-            }
         }
 
         return response([

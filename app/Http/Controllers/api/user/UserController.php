@@ -4,6 +4,7 @@ namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\IboEarning;
 use App\Models\KycVerification;
 use App\Models\PropertyDeal;
 use Illuminate\Http\Request;
@@ -301,6 +302,26 @@ class UserController extends Controller
         return response([
             'status'    => false,
             'message'   => 'User not found!'
+        ], 404);
+    }
+
+    //get_earnings
+    public function get_ibo_earnings()
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $earnings = IboEarning::where("ibo_id", $user->id)->get();
+
+            return response([
+                'status'    => true,
+                'message'   => 'Earnings fetched successfully.',
+                'data'      => $earnings
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found.'
         ], 404);
     }
 }
