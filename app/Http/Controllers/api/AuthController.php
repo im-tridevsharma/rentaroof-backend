@@ -48,7 +48,6 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $isMobileUser = false;
-
         $rules = [
             'password' => 'required|string|min:8'
         ];

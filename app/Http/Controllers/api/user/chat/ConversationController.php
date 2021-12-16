@@ -27,8 +27,8 @@ class ConversationController extends Controller
         $user = JWTAuth::user();
         if ($user) {
             $conversations = Conversation::where("sender_id", $user->id)->orWhere("receiver_id", $user->id)->get()->map(function ($c) {
-                $receiver = User::find($c->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
-                $sender = User::find($c->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id']);
+                $receiver = User::find($c->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id', 'role']);
+                $sender = User::find($c->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id', 'role']);
                 $last_message = ChatMessage::select("id", "conversation_id", "message_type", "message")->where("conversation_id", $c->id)->orderBy('created_at', 'desc')->first();
                 $c->receiver = $receiver;
                 $c->sender = $sender;
