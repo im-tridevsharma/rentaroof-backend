@@ -48,6 +48,7 @@ class MeetingController extends Controller
                     $m->property_posted_by = $p->posted_by;
                     $m->front_image = $p->front_image;
                     $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
+                    $m->landlord = User::select(['first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
                     $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
                     $m->agreement = $a;
                     return $m;
@@ -189,6 +190,7 @@ class MeetingController extends Controller
                         $m->property_posted_by = $p->posted_by;
                         $m->front_image = $p->front_image;
                         $m->ibo = $u->first . ' ' . $u->last;
+                        $m->landlord = User::select(['first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
                         $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
                         $m->agreement = $a;
                         array_push($meetings, $m);

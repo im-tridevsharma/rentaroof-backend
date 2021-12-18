@@ -172,6 +172,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post('chat/conversations', [ConversationController::class, 'store']);
     Route::delete('chat/conversations/{id}', [ConversationController::class, 'destroy']);
     Route::get('chat/messages/{conversationId}', [ConversationController::class, 'getMessages']);
+    Route::get('chat/messages/mobile/{conversationId}', [ConversationController::class, 'getMessagesForMobile']);
     Route::post('chat/messages', [ConversationController::class, 'sendMessage']);
     Route::post('chat/conversations/status', [ConversationController::class, 'change_status']);
 

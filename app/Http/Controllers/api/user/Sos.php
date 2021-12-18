@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api\user;
 
 use App\Events\AdminNotificationSent;
+use App\Events\SOSFired;
 use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
 use Illuminate\Http\Request;
@@ -74,7 +75,9 @@ class Sos extends Controller
             $an->title = 'SOS Alert';
             $an->redirect = '/admin/sos';
             $an->save();
+
             event(new AdminNotificationSent($an));
+            event(new SOSFired($sos));
 
             return response([
                 'status'    => true,

@@ -34,6 +34,8 @@ class ConversationController extends Controller
                 $c->sender = $sender;
                 if ($last_message) {
                     $c->last_message = $last_message;
+                } else {
+                    $c->last_message = null;
                 }
 
                 return $c;
@@ -250,6 +252,43 @@ class ConversationController extends Controller
                 'status'    => true,
                 'message'   => 'Messages fetched successfully.',
                 'data'      => $messages
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Conversation not found!'
+        ], 404);
+    }
+
+    //get message
+    public function getMessagesForMobile($conversationId)
+    {
+        if ($conversationId) {
+            $messages = ChatMessage::where("conversation_id", $conversationId)->get()->map(function ($m) {
+                if ($m->message_type === 'deal') {
+                    $m->deal = PropertyDeal::find($m->deal_id);
+                    $m->deal->property = Property::where("id", $m->deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent', 'posted_by']);
+                }
+                return $m;
+            })->groupBy(function ($item) {
+                return $item->date;
+            });
+
+            $_messages = [];
+            foreach ($messages as $key => $message) {
+                $data = [
+                    "date" => $key,
+                    "message" => $message
+                ];
+
+                array_push($_messages, $data);
+            }
+
+            return response([
+                'status'    => true,
+                'message'   => 'Messages fetched successfully.',
+                'data'      => $_messages
             ], 200);
         }
 
