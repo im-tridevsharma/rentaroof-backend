@@ -45,7 +45,7 @@ class TrainingManagement extends Controller
         $validator = Validator::make($request->all(), [
             'title'         => 'required|string|between:2,100',
             'description'   => 'required|string|max:200',
-            'type'          => 'required|in:global,user'
+            'type'          => 'required|in:tenant,ibo,landlord'
         ]);
 
         if ($validator->fails()) {
@@ -139,7 +139,7 @@ class TrainingManagement extends Controller
         $validator = Validator::make($request->all(), [
             'title'         => 'required|string|between:2,100',
             'description'   => 'required|string|max:200',
-            'type'          => 'required|in:global,user'
+            'type'          => 'required|in:tenant,ibo,landlord'
         ]);
 
         if ($validator->fails()) {

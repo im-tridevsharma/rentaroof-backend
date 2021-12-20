@@ -14,6 +14,8 @@ use App\Http\Controllers\api\admin\AmenityManagement;
 use App\Http\Controllers\api\admin\ComplainManagement;
 use App\Http\Controllers\api\admin\EmployeeManagement;
 use App\Http\Controllers\api\admin\EnquiryManagement;
+use App\Http\Controllers\api\admin\FaqManagement;
+use App\Http\Controllers\api\admin\McqManagement;
 use App\Http\Controllers\api\admin\MeetingManagement;
 use App\Http\Controllers\api\admin\PageManagement;
 use App\Http\Controllers\api\admin\PreferenceManagement;
@@ -125,6 +127,13 @@ Route::resource('employees', EmployeeManagement::class)->middleware('admin');
 Route::resource('roles', RoleManagement::class)->middleware('admin');
 //manage trainings
 Route::resource('trainings', TrainingManagement::class)->middleware('admin');
+//manage faq
+Route::resource('faqs', FaqManagement::class)->middleware('admin');
+//manage mcqs
+Route::delete('mcqs/delete/question/{id}', [McqManagement::class, 'delete_question'])->middleware('admin');
+Route::delete('evaluations/{id}', [McqManagement::class, 'delete_evaluation'])->middleware('admin');
+Route::get('evaluations', [McqManagement::class, 'get_evaluations'])->middleware('admin');
+Route::resource('mcqs', McqManagement::class)->middleware('admin');
 //manage enquiries
 Route::resource('enquiries', EnquiryManagement::class)->middleware('admin');
 //manage sos

@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\api\user;
 
 use App\Http\Controllers\Controller;
-
+use App\Models\Faq;
 use App\Models\Training;
 use App\Models\User;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class TrainingController extends Controller
 {
@@ -14,26 +15,10 @@ class TrainingController extends Controller
     {
         $user = User::find($id);
         if ($user) {
-            //find all gloabl trainings
-            $globals = Training::where("type", "global")
-                ->where("video_urls", "!=", "[]")
-                ->get();
             $videos = [];
-            foreach ($globals as $t) {
-                $video = json_decode($t->video_urls);
-                foreach ($video as $v) {
-                    array_push($videos, [
-                        "id"          => $t->id,
-                        "title"       => $t->title,
-                        "description" => $t->description,
-                        "video"       => $v
-                    ]);
-                }
-            }
             //find personal
-            $personal = Training::where("type", "user")
+            $personal = Training::where("type", $user->role)
                 ->where("video_urls", "!=", "[]")
-                ->whereRaw("JSON_CONTAINS(user_ids, '\"{$user->id}\"')")
                 ->get();
             foreach ($personal as $t) {
                 $video = json_decode($t->video_urls);
@@ -65,26 +50,10 @@ class TrainingController extends Controller
     {
         $user = User::find($id);
         if ($user) {
-            //find all gloabl trainings
-            $globals = Training::where("type", "global")
-                ->where("attachments", "!=", "[]")
-                ->get();
-            $global_pdfs = $personal_pdfs = [];
-            foreach ($globals as $t) {
-                $pdf = json_decode($t->attachments);
-                foreach ($pdf as $p) {
-                    array_push($global_pdfs, [
-                        "id"          => $t->id,
-                        "title"       => $t->title,
-                        "description" => $t->description,
-                        "pdf"       => $p
-                    ]);
-                }
-            }
+            $personal_pdfs = [];
             //find personal
-            $personal = Training::where("type", "user")
+            $personal = Training::where("type", $user->role)
                 ->where("attachments", "!=", "[]")
-                ->whereRaw("JSON_CONTAINS(user_ids, '\"{$user->id}\"')")
                 ->get();
             foreach ($personal as $t) {
                 $pdf = json_decode($t->attachments);
@@ -101,13 +70,31 @@ class TrainingController extends Controller
             return response([
                 'status'    => true,
                 'message'   => 'Training pdfs fetched successfully.',
-                'data'      => ["global" => $global_pdfs, "persoanl" => $personal_pdfs]
+                'data'      =>  $personal_pdfs
             ], 200);
         }
 
         return response([
             'status'    => false,
             'message'   => "User not found!"
+        ], 404);
+    }
+
+    public function getFaqs()
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $faqs = Faq::where("type", $user->role)->get();
+            return response([
+                'status'    => true,
+                'message'   => 'Faqs fecthed successfully.',
+                'data'      => $faqs
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found.'
         ], 404);
     }
 }
