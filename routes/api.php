@@ -199,6 +199,8 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::get("trainings/videos/{id}", [TrainingController::class, 'videos']);
     Route::get("trainings/pdfs/{id}", [TrainingController::class, 'pdfs']);
     Route::get("trainings/faqs", [TrainingController::class, 'getFaqs']);
+    Route::get("trainings/mcqs", [TrainingController::class, 'getMcqsIBO']);
+    Route::post("trainings/submit_answer", [TrainingController::class, 'saveAnswer']);
 
     //settings
     Route::post('settings/template', [SettingController::class, 'update_template']);

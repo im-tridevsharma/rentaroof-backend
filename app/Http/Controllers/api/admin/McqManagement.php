@@ -268,13 +268,13 @@ class McqManagement extends Controller
     //delete evaluation
     public function delete_evaluation($id)
     {
-        $question = IboEvaluation::find($id);
-        if ($question) {
-            $question->delete();
+        $evaluation = IboEvaluation::find($id);
+        if ($evaluation) {
+            $evaluation->delete();
             return response([
                 'status'    => true,
                 'message'   => 'Evaluation deleted successfully.',
-                'data'      => $question
+                'data'      => $evaluation
             ], 200);
         }
 
