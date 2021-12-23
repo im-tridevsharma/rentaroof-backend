@@ -42,11 +42,13 @@ class WalletController extends Controller
         if ($user) {
             $txns = Transaction::where("type", "wallet")->where("user_id", $user->id);
             if ($request->filled('keyword')) {
-                $txns->where("user_name", "like", "%" . $request->keyword . "%");
-                $txns->orWhere("status", "like", "%" . $request->keyword . "%");
-                $txns->orWhere("order_number", "like", "%" . $request->keyword . "%");
-                $txns->orWhere("txn_number", "like", "%" . $request->keyword . "%");
-                $txns->orWhere("amount", "like", "%" . $request->keyword . "%");
+                $txns->where(function ($q) use ($request) {
+                    $q->where("user_name", "like", "%" . $request->keyword . "%");
+                    $q->orWhere("status", "like", "%" . $request->keyword . "%");
+                    $q->orWhere("order_number", "like", "%" . $request->keyword . "%");
+                    $q->orWhere("txn_number", "like", "%" . $request->keyword . "%");
+                    $q->orWhere("amount", "like", "%" . $request->keyword . "%");
+                });
             }
             $txns = $txns->get();
             return response([
