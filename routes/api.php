@@ -224,8 +224,11 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::resource('properties/addresses', PropertyAddressController::class);
 });
 
+//find an agent
+Route::get('/find-agent', [Enquiry::class, 'findAnAgent']);
 //enquiries
 Route::resource('enquiries', Enquiry::class);
+
 
 //admin routes
 Route::prefix('admin')

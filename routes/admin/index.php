@@ -97,6 +97,7 @@ Route::resource('cities', CityManagement::class)->middleware('admin');
 Route::get('users/total', [UserManagement::class, 'total'])->middleware('admin');
 Route::get('users/ban/{id}', [UserManagement::class, 'ban'])->middleware('admin');
 Route::get('users/activate/{id}', [UserManagement::class, 'activate'])->middleware('admin');
+Route::get('users/tracking', [UserManagement::class, 'users_for_tracking'])->middleware('admin');
 Route::resource('users', UserManagement::class)->middleware('admin');
 //manage ibos
 Route::get('ibos/total', [IBOManagement::class, 'total'])->middleware('admin');

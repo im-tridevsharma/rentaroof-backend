@@ -4,6 +4,7 @@ namespace App\Http\Controllers\api\admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\Country;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -30,6 +31,32 @@ class UserManagement extends Controller
         ], 200);
     }
 
+    //users_for_tracking
+    public function users_for_tracking()
+    {
+        $users = User::select(['id','first','last','profile_pic','email','mobile','address_id','system_userid','role','is_logged_in'])->where("account_status", "activated")->get()->map(function($q){
+            $address = Address::find($q->address_id);
+            if($address){
+                $uaddr = [
+                    "full_address" => $address->full_address ?? '',
+                    "lat"          => $address->lat ?? 0,
+                    "long"         => $address->long ?? 0,
+                    "country"      => Country::find($address->country)->name ?? '', 
+                    "state"        => Country::find($address->state)->name ?? '', 
+                    "city"         => Country::find($address->city)->name ?? '',
+                ];
+    
+                $q->address = $uaddr;
+            }
+            return $q;
+        });
+
+        return response([
+            'status'    => true,
+            'message'   => 'Users fetched successfully.',
+            'data'      => $users
+        ], 200);
+    }
 
     /**
      * Return no. of users

@@ -266,8 +266,8 @@ class PropertyController extends Controller
 
             $address = Address::find($property->address_id);
 
-            $latitude = $address->lat;
-            $longitude = $address->long;
+            $latitude = $address->lat??0;
+            $longitude = $address->long??0;
             $ibos = DB::table("addresses")
                 ->select("user_id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
