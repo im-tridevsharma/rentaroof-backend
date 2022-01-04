@@ -191,6 +191,30 @@ class AuthController extends Controller
 
         //save user to database
         if ($user->save()) {
+
+            //create settings if user is ibo and landlord
+            if($user->role !== 'tenant'){
+                $settings_keys = [
+                    "account_notification",
+                    "receive_important_updates_on_number",
+                    "meeting_updates",
+                    "offers_and_updates"
+                ];
+
+                foreach($settings_keys as $setting_key){
+                    $setting = DB::table('user_settings')->where("key", $setting_key)->where("user_id", $user->id)->first();
+                    if ($setting) {
+                        //update
+                        DB::table('user_settings')->where("user_id", $user->id)->where("key", $setting_key)
+                            ->update(["value" => 'no']);
+                    } else {
+                        //save
+                        DB::table('user_settings')
+                            ->insert(["key" => $setting_key, "value" => 'no', "user_id" => $user->id]);
+                    }
+                }
+            }
+
             //create user wallet
             $wallet = new Wallet;
             $wallet->user_id = $user->id;

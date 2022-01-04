@@ -50,7 +50,7 @@ class SettingController extends Controller
         $user = User::find($id);
 
         if ($user) {
-            $settings = DB::table("user_settings")->where("user_id", $id)->get()->map(function ($s) {
+            $settings = DB::table("user_settings")->orderBy('key',"asc")->where("user_id", $id)->get()->map(function ($s) {
                 return [$s->key => $s->value];
             });
             return response([
@@ -72,7 +72,7 @@ class SettingController extends Controller
         $user = User::find($id);
 
         if ($user) {
-            $settings = DB::table("user_settings")->where("user_id", $id)->get()->map(function ($s) {
+            $settings = DB::table("user_settings")->orderBy("key","asc")->where("user_id", $id)->get()->map(function ($s) {
                 return ["name" => $s->key, "value" => $s->value];
             });
             return response([

@@ -15,6 +15,7 @@ use App\Http\Controllers\api\admin\ComplainManagement;
 use App\Http\Controllers\api\admin\EmployeeManagement;
 use App\Http\Controllers\api\admin\EnquiryManagement;
 use App\Http\Controllers\api\admin\FaqManagement;
+use App\Http\Controllers\api\admin\LocationManagement;
 use App\Http\Controllers\api\admin\McqManagement;
 use App\Http\Controllers\api\admin\MeetingManagement;
 use App\Http\Controllers\api\admin\PageManagement;
@@ -93,6 +94,8 @@ Route::resource('countries', CountryManagement::class)->middleware('admin');
 Route::resource('states', StateManagement::class)->middleware('admin');
 //manage cities
 Route::resource('cities', CityManagement::class)->middleware('admin');
+//manage locations
+Route::resource('locations', LocationManagement::class)->middleware('admin');
 //manage users
 Route::get('users/total', [UserManagement::class, 'total'])->middleware('admin');
 Route::get('users/ban/{id}', [UserManagement::class, 'ban'])->middleware('admin');

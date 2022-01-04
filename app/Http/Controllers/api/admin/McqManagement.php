@@ -36,8 +36,11 @@ class McqManagement extends Controller
             'status'    => true,
             'message'   => 'Evaluations fetched successfully.',
             'data'      => $evaluations->map(function ($e) {
-                $e->ibo_name = User::find($e->ibo_id)->first . ' ' . User::find($e->ibo_id)->last;
-                $e->mcq_title = Mcq::find($e->mcq_id)->title;
+                $first = User::find($e->ibo_id)->first ?? '';
+                $last  = User::find($e->ibo_id)->last ?? '';
+
+                $e->ibo_name = $first . ' ' . $last;
+                $e->mcq_title = Mcq::find($e->mcq_id)->title ?? '';
 
                 return $e;
             })

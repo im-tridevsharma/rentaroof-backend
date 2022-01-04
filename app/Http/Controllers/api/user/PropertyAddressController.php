@@ -71,6 +71,7 @@ class PropertyAddressController extends Controller
             $p->state_name = !empty($request->state) ? State::find($request->state)->name : '';
             $p->city_name = !empty($request->city) ? City::find($request->city)->name : '';
             $p->pincode = !empty($request->pincode) ? $request->pincode : '';
+            $p->locations = implode(",", $request->locations ?? '');
             $p->save();
 
             return response([
@@ -154,6 +155,7 @@ class PropertyAddressController extends Controller
                 $p->state_name = !empty($request->state) ? State::find($request->state)->name : '';
                 $p->city_name = !empty($request->city) ? City::find($request->city)->name : '';
                 $p->pincode = !empty($request->pincode) ? $request->pincode : '';
+                $p->locations = implode(",", $request->locations ?? '');
                 $p->save();
 
                 return response([

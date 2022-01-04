@@ -33,6 +33,7 @@ use App\Models\Agreement;
 use App\Models\Amenity;
 use App\Models\City;
 use App\Models\Country;
+use App\Models\Location;
 use App\Models\Preference;
 use App\Models\State;
 use Illuminate\Support\Facades\Broadcast;
@@ -126,6 +127,16 @@ Route::get("cities", function () {
         'data'      => City::all()
     ]);
 });
+
+
+Route::get("locations", function () {
+    return response([
+        'status'    => true,
+        'message'   => 'Locations fecthed successfully.',
+        'data'      => Location::all()
+    ]);
+});
+
 
 Route::get("amenities", function () {
     return response([
