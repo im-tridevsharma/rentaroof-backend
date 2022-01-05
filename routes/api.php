@@ -82,6 +82,9 @@ Route::get("properties/ibo/{id}", [PropertyController::class, 'property_by_user'
 Route::get("properties/landlord/{id}", [PropertyController::class, 'property_by_user']);
 
 Route::get('earnings/ibo', [UserController::class, 'get_ibo_earnings']);
+Route::get('earnings/ibo/cards', [UserController::class, 'income_cards']);
+Route::get('earnings/ibo/deals', [UserController::class, 'ibo_deals_earning']);
+Route::get('earnings/ibo/for_year', [UserController::class, 'earning_for_year']);
 Route::get('ratings/ibo/all/{id}', [IboRatingController::class, 'all']);
 Route::resource('ratings/ibo', IboRatingController::class);
 Route::get('ibo/notifications/unseen', [IboNotificationController::class, 'unseenNotification']);

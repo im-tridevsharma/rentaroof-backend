@@ -324,4 +324,98 @@ class UserController extends Controller
             'message'   => 'User not found.'
         ], 404);
     }
+
+    //ibo income cards
+    public function income_cards()
+    {
+        $ibo = JWTAuth::user();
+
+        $this_month_total = 0.0;
+        $last_month_total = 0.0;
+        $income_breakdown = 0.0;
+        $this_year_total  = 0.0;
+        $last_year_total  = 0.0;
+        
+        //this month
+        $this_month_earning = IboEarning::whereMonth("created_at", date("m"))->whereYear("created_at", date("Y"))->where("ibo_id", $ibo->id)->get();
+        foreach($this_month_earning as $e){
+            $this_month_total += floatval($e->amount);
+        }
+
+        //last month
+        $last_month_earning = IboEarning::whereMonth("created_at", date("m", strtotime('last month')))->whereYear("created_at", date("Y", strtotime('last month')))->where("ibo_id", $ibo->id)->get();
+        foreach($last_month_earning as $e){
+            $last_month_total += floatval($e->amount);
+        }
+
+        $income_breakdown = $last_month_total - $this_month_total;
+
+        //this year
+        $this_yaer_earning = IboEarning::whereYear("created_at", date("Y"))->where("ibo_id", $ibo->id)->get();
+        foreach($this_yaer_earning as $e){
+            $this_year_total += floatval($e->amount);
+        }
+
+        //last year
+        $last_yaer_earning = IboEarning::whereYear("created_at", date("Y", strtotime('last year')))->where("ibo_id", $ibo->id)->get();
+        foreach($last_yaer_earning as $e){
+            $last_year_total += floatval($e->amount);
+        }
+
+        return response([
+            'status'    => true,
+            'message'   => 'Ibo Earning Cards fetched successfully.',
+            'data'      => [
+                "this_month"    => $this_month_total,
+                "per_month"     => $last_month_total,
+                "breakdown"     => $income_breakdown,
+                "breakdown_sign" => $income_breakdown > 0 ? '-' : '+',
+                "this_year"     => $this_year_total,
+                "last_year"     => $last_year_total
+            ]
+        ], 200);
+    }
+
+    //deals earning
+    public function ibo_deals_earning()
+    {
+        $ibo = JWTAuth::user();
+        $earnings = IboEarning::where("ibo_id", $ibo->id)->get()->map(function($d){
+            $deal = PropertyDeal::find($d->deal_id);
+            $d->is_closed = $deal ? $deal->is_closed : 0;
+            $d->user = User::find($deal->offer_for ?? 0)->first ?? '';
+
+            return $d;
+        });
+
+        return response([
+            'status'    => true,
+            'message'   => 'Deals Earning fetched successfully.',
+            'data'      => $earnings
+        ], 200);
+    }
+
+    //earning for year month wise
+    public function earning_for_year()
+    {
+        $ibo = JWTAuth::user();
+        $years = [];
+        $months = ['Jan','Feb','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        foreach($months as $m){
+            $total = 0;
+            $earnings = IboEarning::whereMonth("created_at", date('m', strtotime($m.date('Y'))))->whereYear("created_at", date('Y'))->where("ibo_id", $ibo->id)->get();
+            foreach($earnings as $e){
+                $total += floatval($e->amount);
+            }
+
+            $years[$m] = $total;
+        }
+
+        return response([
+            'status'    => true,
+            'message'   => 'Year\'s income month wise fetched successfully.',
+            'data'      => $years
+        ], 200);
+    }
 }
