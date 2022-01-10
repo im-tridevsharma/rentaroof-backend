@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
+use App\Models\OTPVerification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -10,6 +11,7 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 use App\Models\User;
 use App\Models\Wallet;
 use Exception;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -22,7 +24,7 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode']]);
+        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode','sendOtp']]);
     }
 
     /**
@@ -48,9 +50,11 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $isMobileUser = false;
-        $rules = [
-            'password' => 'required|string|min:8'
-        ];
+        if($request->has('password') && !empty($request->password)){
+            $rules = [
+                'password' => 'string|min:8'
+            ];
+        }
 
         $errorMessages = [
             'required' => 'The :attribute field can not be blank.'
@@ -73,6 +77,36 @@ class AuthController extends Controller
             ], 400);
         }
 
+        $user = null;
+
+        if($request->has('otp')){
+            //check for otp auth
+            $user = User::where("mobile", $request->email)->first();
+            if($user){
+                $sent_otp = OTPVerification::where("user_id", $user->id)->where("OTP", $request->otp)->first(); 
+                
+                if($sent_otp && date("Y-m-d H:i:s", strtotime($sent_otp->expired_at)) < date('Y-m-d H:i:s')){
+                    
+                    return response([
+                        'status'    => false,
+                        'message'   => 'OTP has been expired.'
+                    ], 401); 
+                }
+
+                if(!$sent_otp || $sent_otp->OTP !== $request->otp){
+                    return response([
+                        'status'    => false,
+                        'message'   => 'OTP is invalid. Please check once.'
+                    ], 401);
+                }
+            }else{
+                return response([
+                    'status'    => false,
+                    'message'   => 'Mobile number is not authorized!'
+                ], 404);
+            }
+        }
+
         $credentials = ["password" => $request->password];
         if ($isMobileUser) {
             $credentials['mobile'] = $request->email;
@@ -88,25 +122,44 @@ class AuthController extends Controller
             ], 400);
         }
 
-        try {
-            if (!$token = JWTAuth::attempt($credentials)) {
+        $token = null;
+
+        if(!$request->has('otp')){
+            try {
+                if (!$token = JWTAuth::attempt($credentials)) {
+                    return response([
+                        'message' => $isMobileUser ? "Mobile or Password is wrong!" : "Email or Password is wrong!"
+                    ], 401);
+                }
+            } catch (Exception $e) {
                 return response([
-                    'message' => $isMobileUser ? "Mobile or Password is wrong!" : "Email or Password is wrong!"
-                ], 401);
+                    'status'    =>  false,
+                    'message'   => 'Some errors occured.',
+                    'error'     => [$e->errorInfo[count($e->errorInfo) - 1]]
+                ], 500);
             }
-        } catch (Exception $e) {
-            return response([
-                'status'    =>  false,
-                'message'   => 'Some errors occured.',
-                'error'     => [$e->errorInfo[count($e->errorInfo) - 1]]
-            ], 500);
+        }else{
+            try {
+                if (!$token = JWTAuth::fromUser($user)) {
+                    return response([
+                        'message' => $isMobileUser ? "Mobile or Password is wrong!" : "Email or Password is wrong!"
+                    ], 401);
+                }
+
+            } catch (Exception $e) {
+                return response([
+                    'status'    =>  false,
+                    'message'   => 'Some errors occured.',
+                    'error'     => [$e->errorInfo[count($e->errorInfo) - 1]]
+                ], 500);
+            }
         }
 
         if ($request->filled('remember_me') && $request->remember_me === 'yes') {
             JWTAuth::factory()->setTTL(60 * 24 * 356);
         }
-
-        $user = JWTAuth::user();
+        
+        $user = $user ? $user : JWTAuth::user();
         $user->is_logged_in = 1;
         $user->save();
         $info = [
@@ -136,6 +189,8 @@ class AuthController extends Controller
         $rules = [
             'name'      => 'required|string|between:2,50',
             'role'      => 'required|string|in:tenant,ibo,landlord',
+            'email'     => 'required|email|unique:users',
+            'mobile'    => 'required',
             'password'  => 'required|string|min:8'
         ];
 
@@ -143,12 +198,10 @@ class AuthController extends Controller
             'required' => 'The :attribute field can not be blank.'
         ];
 
-        if (is_numeric($request->email)) {
-            $rules['email'] = 'required|digits:10';
-            $errorMessages['email.digits'] = 'Mobile number is not valid (must be of 10 digits).';
+        if (is_numeric($request->mobile)) {
+            $rules['mobile'] = 'required|digits:10';
+            $errorMessages['mobile.digits'] = 'Mobile number is not valid (must be of 10 digits).';
             $isMobileUser = true;
-        } else {
-            $rules['email'] = 'required|email|unique:users';
         }
 
         $validator = Validator::make($request->all(), $rules, $errorMessages);
@@ -161,7 +214,7 @@ class AuthController extends Controller
         }
 
         //check if already a user with mobile
-        if ($isMobileUser && User::where('mobile', $request->email)->count()) {
+        if ($isMobileUser && User::where('mobile', $request->mobile)->count()) {
             return response([
                 'message' => 'Some errors occured',
                 'error' => ['mobile' => 'The Mobile number has already been taken.']
@@ -174,11 +227,8 @@ class AuthController extends Controller
         $name = explode(" ", $request->name);
         $user->first = isset($name[0]) ? $name[0] : $request->name;
         $user->last = isset($name[1]) ? $name[1] : '';
-        if ($isMobileUser) {
-            $user->mobile = $request->email;
-        } else {
-            $user->email = $request->email;
-        }
+        $user->email = $request->email ?? '';
+        $user->mobile = $request->mobile ?? '';
         $user->role = $request->role;
         $user->password = bcrypt($request->password);
         $user->referral_code = $request->referral_code;
@@ -281,6 +331,56 @@ class AuthController extends Controller
                 'status' => false,
                 'message' => 'Unable to register user.'
             ], 500);
+        }
+    }
+
+    //sendOtp
+    public function sendOtp(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'mobile'    => 'required|digits:10'
+        ]);
+
+        if($validator->fails()){
+            return response([
+                'status'    => false,
+                'message'   => 'Mobile number is not valid.',
+                'error'     => $validator->errors()
+            ], 422);
+        }
+
+        //check is there any user with this mobile number
+        $user = User::where("mobile", $request->mobile)->first();
+
+        if($user){
+            $botp = rand(111111, 999999);
+            $otp = 'OTP for Rent a Roof is - '.$botp;
+            $is_otp = sms($otp, $user->mobile);
+            if($is_otp){
+                //save this in database
+                $dbotp = new OTPVerification;
+                $dbotp->txn_id = $is_otp;
+                $dbotp->user_id = $user->id;
+                $dbotp->OTP = $botp;
+                $dbotp->sent_for = "login";
+                $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
+                $dbotp->save();
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'OTP Sent sucessfully.',
+                ], 200);
+            }else{
+                return response([
+                    'status'    => false,
+                    'message'   => 'Something went wrong. Please check your mobile number.',
+                ], 500);
+            }
+        }else{
+            return response([
+                'status'    => false,
+                'message'   => 'User not found with this mobile number.',
+            ], 404);
         }
     }
 
