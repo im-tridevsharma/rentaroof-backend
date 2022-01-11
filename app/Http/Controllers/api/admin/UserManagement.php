@@ -9,7 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class UserManagement extends Controller
@@ -335,6 +337,12 @@ class UserManagement extends Controller
             if ($address) {
                 $address->delete();
             }
+
+            //delete wallet
+            Wallet::where("user_id", $user->id)->delete();
+
+            //delete settings
+            DB::table('user_settings')->where("user_id", $user->id)->delete();
 
             $user->delete();
             return response([

@@ -24,7 +24,7 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode','sendOtp']]);
+        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode','sendOtp','mobileVerify','emailVerify']]);
     }
 
     /**
@@ -79,7 +79,7 @@ class AuthController extends Controller
 
         $user = null;
 
-        if($request->has('otp')){
+        if($request->has('otp') && !empty($request->otp)){
             //check for otp auth
             $user = User::where("mobile", $request->email)->first();
             if($user){
@@ -117,9 +117,16 @@ class AuthController extends Controller
         $user = $isMobileUser ? User::where("mobile", $request->email)->first() : User::where("email", $request->email)->first();
         if ($user && $user->account_status === 'banned') {
             return response([
-                'message' => "Some errors occured.",
-                'error' => 'banned'
-            ], 400);
+                'status'  => false,
+                'message' => "Your account has been banned. Contact to Administrator.",
+            ], 401);
+        }
+
+        if ($user && $user->account_status === 'not-verified') {
+            return response([
+                'status'  => false,
+                'message' => "Your account is not verified yet.",
+            ], 401);
         }
 
         $token = null;
@@ -181,7 +188,7 @@ class AuthController extends Controller
     /*
     User sign up from website
     */
-
+    
     public function signup(Request $request)
     {
         $isMobileUser = false;
@@ -232,6 +239,9 @@ class AuthController extends Controller
         $user->role = $request->role;
         $user->password = bcrypt($request->password);
         $user->referral_code = $request->referral_code;
+        $user->account_status = 'not-verified';
+        $user->email_verified = 0;
+        $user->mobile_verified = 0;
         $user->system_ip = $request->ip();
         $user->category = $request->filled('category') ? $request->category : NULL;
 
@@ -241,96 +251,196 @@ class AuthController extends Controller
 
         //save user to database
         if ($user->save()) {
+            $botp = rand(111111, 999999);
+            $otp_data = [
+                'user'  => $user->first .' '. $user->last,
+                'otp'   => $botp,
+                'email' => $user->email
+            ];
 
-            //create settings if user is ibo and landlord
-            if($user->role !== 'tenant'){
-                $settings_keys = [
-                    "account_notification",
-                    "receive_important_updates_on_number",
-                    "meeting_updates",
-                    "offers_and_updates"
-                ];
-
-                foreach($settings_keys as $setting_key){
-                    $setting = DB::table('user_settings')->where("key", $setting_key)->where("user_id", $user->id)->first();
-                    if ($setting) {
-                        //update
-                        DB::table('user_settings')->where("user_id", $user->id)->where("key", $setting_key)
-                            ->update(["value" => 'no']);
-                    } else {
-                        //save
-                        DB::table('user_settings')
-                            ->insert(["key" => $setting_key, "value" => 'no', "user_id" => $user->id]);
-                    }
-                }
-            }
-
-            //create user wallet
-            $wallet = new Wallet;
-            $wallet->user_id = $user->id;
-            $wallet->amount = 0;
-            $wallet->credit = 0;
-            $wallet->debit = 0;
-            $wallet->last_transaction_type = 'credit';
-            $wallet->last_credit_transaction = date('Y-m-d H:i:s');
-
-            $wallet->save();
-
-            if ($request->referral_code) {
-                $refuser = User::where("system_userid", $request->referral_code)->first();
-                if ($refuser) {
-                    //get settings for points
-                    $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
-                    $s_point  = DB::table('settings')->where("setting_key", "referral_bonus_sender_point")->first()->setting_value;
-                    $r_point = DB::table('settings')->where("setting_key", "referral_bonus_receiver_point")->first()->setting_value;
-
-                    $spoints = floatval($s_point) * floatval($point_value);
-                    $rpoints = floatval($r_point) * floatval($point_value);
-
-                    //point data
-                    $sdata = [
-                        "user_id"   => $refuser->id,
-                        "role"      => $refuser->role,
-                        "title"     => "You earned " . $s_point . " points for referral of " . $user->first . " " . $user->last,
-                        "point_value"   => $point_value,
-                        "points"    => $s_point,
-                        "amount_earned" => $spoints,
-                        "type"  => "credit",
-                        "for"  => "referral",
-                        "created_at"    => date("Y-m-d H:i:s"),
-                        "updated_at"    => date("Y-m-d H:i:s"),
-                    ];
-
-                    DB::table('user_referral_points')->insert($sdata);
-
-                    //point data
-                    $rdata = [
-                        "user_id"   => $user->id,
-                        "role"      => $user->role,
-                        "title"     => "You earned " . $r_point . " points for referral by " . $refuser->first . " " . $refuser->last,
-                        "point_value"   => $point_value,
-                        "points"    => $r_point,
-                        "amount_earned" => $rpoints,
-                        "type"  => "credit",
-                        "for"  => "referred",
-                        "created_at"    => date("Y-m-d H:i:s"),
-                        "updated_at"    => date("Y-m-d H:i:s"),
-                    ];
-
-                    DB::table('user_referral_points')->insert($rdata);
-                }
+            $is_sent = send_email_otp($otp_data);
+            if($is_sent == 1){
+                //save this in database
+                $dbotp = new OTPVerification;
+                $dbotp->txn_id = time();
+                $dbotp->user_id = $user->id;
+                $dbotp->OTP = $botp;
+                $dbotp->sent_for = "email_verification";
+                $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
+                $dbotp->save();
             }
 
             return response([
                 'status' => true,
-                'message' => 'User Registered successfully.',
-                'user' => $user
+                'message'=> 'OTP has been sent on email for Email Verification. Please verify your email!',
+                'user'   => $user->only('id','email','mobile')
             ], 200);
+
         } else {
             return response([
                 'status' => false,
                 'message' => 'Unable to register user.'
             ], 500);
+        }
+    }
+
+    //verify email otp
+    public function emailVerify(Request $request)
+    {
+        $user_id = $request->user_id ?? false;
+        $otp     = $request->otp ?? '';
+
+        $user = User::find($user_id);
+
+        if($user_id && $otp && $user){
+            $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->first();
+            if($votp && $votp->OTP === $otp){
+                $botp = rand(111111, 999999);
+                $otp = 'Verify your mobile number with Rent A Roof. OTP for verification is - '.$botp;
+                $is_otp = sms($otp, $user->mobile);
+                if($is_otp){
+                    //save this in database
+                    $dbotp = new OTPVerification;
+                    $dbotp->txn_id = $is_otp;
+                    $dbotp->user_id = $user->id;
+                    $dbotp->OTP = $botp;
+                    $dbotp->sent_for = "mobile_verification";
+                    $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
+                    $dbotp->save();
+                }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Email Verified! OTP has been sent on your mobile. Please verify it.'
+                ], 200);
+            }else{
+                return response([
+                    'status'    => false,
+                    'message'   => 'OTP doesn\'t match.'
+                ], 401);
+            }
+        }else{
+            return response([
+                'status'    => false,
+                'message'   => 'Please check your OTP. It seems invalid.'
+            ], 422);
+        }
+    }
+
+    //verify mobile otp
+    public function mobileVerify(Request $request)
+    {
+        $user_id = $request->user_id ?? false;
+        $otp     = $request->otp ?? '';
+
+        $user = User::find($user_id);
+
+        if($user_id && $otp && $user){
+            $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->first();
+            if($votp && $votp->OTP === $otp){
+                $this->userTools($user);
+                $user->email_verified = 1;
+                $user->mobile_verified = 1;
+                $user->account_status = "activated";
+                $user->save();
+                
+                return response([
+                    'status'    => true,
+                    'message'   => 'Mobile Verified. Redirecting you to login page.'
+                ], 200);
+            }else{
+                return response([
+                    'status'    => false,
+                    'message'   => 'OTP doesn\'t match.'
+                ], 401);
+            }
+        }else{
+            return response([
+                'status'    => false,
+                'message'   => 'Please check your OTP. It seems invalid.'
+            ], 422); 
+        }
+    }
+
+    public function userTools($user)
+    {
+        //create settings if user is ibo and landlord
+        if($user->role !== 'tenant'){
+            $settings_keys = [
+                "account_notification",
+                "receive_important_updates_on_number",
+                "meeting_updates",
+                "offers_and_updates"
+            ];
+
+            foreach($settings_keys as $setting_key){
+                $setting = DB::table('user_settings')->where("key", $setting_key)->where("user_id", $user->id)->first();
+                if ($setting) {
+                    //update
+                    DB::table('user_settings')->where("user_id", $user->id)->where("key", $setting_key)
+                        ->update(["value" => 'no']);
+                } else {
+                    //save
+                    DB::table('user_settings')
+                        ->insert(["key" => $setting_key, "value" => 'no', "user_id" => $user->id]);
+                }
+            }
+        }
+
+        //create user wallet
+        $wallet = new Wallet;
+        $wallet->user_id = $user->id;
+        $wallet->amount = 0;
+        $wallet->credit = 0;
+        $wallet->debit = 0;
+        $wallet->last_transaction_type = 'credit';
+        $wallet->last_credit_transaction = date('Y-m-d H:i:s');
+
+        $wallet->save();
+
+        if ($user->referral_code) {
+            $refuser = User::where("system_userid", $user->referral_code)->first();
+            if ($refuser) {
+                //get settings for points
+                $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
+                $s_point  = DB::table('settings')->where("setting_key", "referral_bonus_sender_point")->first()->setting_value;
+                $r_point = DB::table('settings')->where("setting_key", "referral_bonus_receiver_point")->first()->setting_value;
+
+                $spoints = floatval($s_point) * floatval($point_value);
+                $rpoints = floatval($r_point) * floatval($point_value);
+
+                //point data
+                $sdata = [
+                    "user_id"   => $refuser->id,
+                    "role"      => $refuser->role,
+                    "title"     => "You earned " . $s_point . " points for referral of " . $user->first . " " . $user->last,
+                    "point_value"   => $point_value,
+                    "points"    => $s_point,
+                    "amount_earned" => $spoints,
+                    "type"  => "credit",
+                    "for"  => "referral",
+                    "created_at"    => date("Y-m-d H:i:s"),
+                    "updated_at"    => date("Y-m-d H:i:s"),
+                ];
+
+                DB::table('user_referral_points')->insert($sdata);
+
+                //point data
+                $rdata = [
+                    "user_id"   => $user->id,
+                    "role"      => $user->role,
+                    "title"     => "You earned " . $r_point . " points for referral by " . $refuser->first . " " . $refuser->last,
+                    "point_value"   => $point_value,
+                    "points"    => $r_point,
+                    "amount_earned" => $rpoints,
+                    "type"  => "credit",
+                    "for"  => "referred",
+                    "created_at"    => date("Y-m-d H:i:s"),
+                    "updated_at"    => date("Y-m-d H:i:s"),
+                ];
+
+                DB::table('user_referral_points')->insert($rdata);
+            }
         }
     }
 
@@ -362,7 +472,7 @@ class AuthController extends Controller
                 $dbotp->txn_id = $is_otp;
                 $dbotp->user_id = $user->id;
                 $dbotp->OTP = $botp;
-                $dbotp->sent_for = "login";
+                $dbotp->sent_for = "otp_login";
                 $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
                 $dbotp->save();
 
