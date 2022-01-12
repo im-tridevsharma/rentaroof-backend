@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api;
 
+
 use App\Http\Controllers\Controller;
 use App\Models\OTPVerification;
 use Illuminate\Http\Request;
@@ -11,9 +12,12 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 use App\Models\User;
 use App\Models\Wallet;
 use Exception;
+use FFI\Exception as FFIException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
+
 
 class AuthController extends Controller
 {
@@ -24,7 +28,7 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode','sendOtp','mobileVerify','emailVerify']]);
+        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode','sendOtp','sendOtpEmail','mobileVerify','emailVerify','createNewPassword']]);
     }
 
     /**
@@ -81,9 +85,9 @@ class AuthController extends Controller
 
         if($request->has('otp') && !empty($request->otp)){
             //check for otp auth
-            $user = User::where("mobile", $request->email)->first();
+            $user = $isMobileUser ? User::where("mobile", $request->email)->first() : User::where("email", $request->email)->first();
             if($user){
-                $sent_otp = OTPVerification::where("user_id", $user->id)->where("OTP", $request->otp)->first(); 
+                $sent_otp = OTPVerification::where("user_id", $user->id)->where("OTP", $request->otp)->where("is_expired",0)->first(); 
                 
                 if($sent_otp && date("Y-m-d H:i:s", strtotime($sent_otp->expired_at)) < date('Y-m-d H:i:s')){
                     
@@ -99,10 +103,14 @@ class AuthController extends Controller
                         'message'   => 'OTP is invalid. Please check once.'
                     ], 401);
                 }
+
+                $sent_otp->is_expired = 1;
+                $sent_otp->save();
+
             }else{
                 return response([
                     'status'    => false,
-                    'message'   => 'Mobile number is not authorized!'
+                    'message'   => $isMobileUser ? 'Mobile number is not authorized!' : 'Email address is not authorized!'
                 ], 404);
             }
         }
@@ -131,7 +139,7 @@ class AuthController extends Controller
 
         $token = null;
 
-        if(!$request->has('otp')){
+        if(!$request->has('otp') || empty($request->otp)){
             try {
                 if (!$token = JWTAuth::attempt($credentials)) {
                     return response([
@@ -293,26 +301,46 @@ class AuthController extends Controller
         $user = User::find($user_id);
 
         if($user_id && $otp && $user){
-            $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->first();
-            if($votp && $votp->OTP === $otp){
-                $botp = rand(111111, 999999);
-                $otp = 'Verify your mobile number with Rent A Roof. OTP for verification is - '.$botp;
-                $is_otp = sms($otp, $user->mobile);
-                if($is_otp){
-                    //save this in database
-                    $dbotp = new OTPVerification;
-                    $dbotp->txn_id = $is_otp;
-                    $dbotp->user_id = $user->id;
-                    $dbotp->OTP = $botp;
-                    $dbotp->sent_for = "mobile_verification";
-                    $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
-                    $dbotp->save();
+            $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->where("is_expired", 0)->first();
+            
+            if($votp && date("Y-m-d H:i:s", strtotime($votp->expired_at)) < date('Y-m-d H:i:s')){
+                return response([
+                    'status'    => false,
+                    'message'   => 'OTP has been expired.'
+                ], 200);
+            }
+
+            if($votp && $votp->OTP === $otp ){
+                if(!$request->has('forgotpass')){
+                    $botp = rand(111111, 999999);
+                    $otp = 'Verify your mobile number with Rent A Roof. OTP for verification is - '.$botp;
+                    $is_otp = sms($otp, $user->mobile);
+                    if($is_otp){
+                        //save this in database
+                        $dbotp = new OTPVerification;
+                        $dbotp->txn_id = $is_otp;
+                        $dbotp->user_id = $user->id;
+                        $dbotp->OTP = $botp;
+                        $dbotp->sent_for = "mobile_verification";
+                        $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
+                        $dbotp->save();
+                        
+                    }
                 }
 
-                return response([
+                $votp->is_expired = 1;
+                $votp->save();
+
+                $res = [
                     'status'    => true,
-                    'message'   => 'Email Verified! OTP has been sent on your mobile. Please verify it.'
-                ], 200);
+                    'message'   => $request->has('forgotpass') ? 'Create Your New Password. Session is only valid for 5 minutes.' : 'Email Verified! OTP has been sent on your mobile. Please verify it.'
+                ];
+
+                if($request->has('forgotpass')){
+                    $res['_token'] = encrypt(['user' => $user->id, 'expires' => Carbon::now()->addMinutes(5)->format('Y-m-d H:i:s')], 1);
+                }
+
+                return response($res, 200);
             }else{
                 return response([
                     'status'    => false,
@@ -336,18 +364,36 @@ class AuthController extends Controller
         $user = User::find($user_id);
 
         if($user_id && $otp && $user){
-            $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->first();
-            if($votp && $votp->OTP === $otp){
-                $this->userTools($user);
-                $user->email_verified = 1;
-                $user->mobile_verified = 1;
-                $user->account_status = "activated";
-                $user->save();
-                
+            $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->where("is_expired",0)->first();
+            if($votp && date("Y-m-d H:i:s", strtotime($votp->expired_at)) < date('Y-m-d H:i:s')){
                 return response([
-                    'status'    => true,
-                    'message'   => 'Mobile Verified. Redirecting you to login page.'
+                    'status'    => false,
+                    'message'   => 'OTP has been expired.'
                 ], 200);
+            }
+            if($votp && $votp->OTP === $otp){
+
+                if(!$request->has('forgotpass')){
+                    $this->userTools($user);
+                    $user->email_verified = 1;
+                    $user->mobile_verified = 1;
+                    $user->account_status = "activated";
+                    $user->save();
+                }
+                
+                $votp->is_expired = 1;
+                $votp->save();
+
+                $res = [
+                    'status'    => true,
+                    'message'   => $request->has('forgotpass') ? 'Create Your New Password. Session is only valid for 5 minutes.' : 'Mobile Verified. Redirecting you to login page.'
+                ];
+
+                if($request->has('forgotpass')){
+                    $res['_token']  = encrypt(['user' => $user->id, 'expires' => Carbon::now()->addMinutes(5)->format('Y-m-d H:i:s')], 1);
+                }
+
+                return response($res, 200);
             }else{
                 return response([
                     'status'    => false,
@@ -466,6 +512,7 @@ class AuthController extends Controller
             $botp = rand(111111, 999999);
             $otp = 'OTP for Rent a Roof is - '.$botp;
             $is_otp = sms($otp, $user->mobile);
+            
             if($is_otp){
                 //save this in database
                 $dbotp = new OTPVerification;
@@ -479,6 +526,7 @@ class AuthController extends Controller
                 return response([
                     'status'    => true,
                     'message'   => 'OTP Sent sucessfully.',
+                    'user'      => $user->only('id','email','mobile')
                 ], 200);
             }else{
                 return response([
@@ -491,6 +539,123 @@ class AuthController extends Controller
                 'status'    => false,
                 'message'   => 'User not found with this mobile number.',
             ], 404);
+        }
+    }
+
+    //sendOtpEmail
+    public function sendOtpEmail(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'email'    => 'required|email'
+        ]);
+
+        if($validator->fails()){
+            return response([
+                'status'    => false,
+                'message'   => 'Email is not valid.',
+                'error'     => $validator->errors()
+            ], 422);
+        }
+
+        //check is there any user with this mobile number
+        $user = User::where("email", $request->email)->first();
+
+        if($user){
+            $botp = rand(111111, 999999);
+            $otp_data = [
+                "user"  => $user->first .' '. $user->last,
+                "otp"   => $botp,
+                "email" => $user->email
+            ];
+
+            $is_otp = send_email_otp($otp_data);
+
+            if($is_otp){
+                //save this in database
+                $dbotp = new OTPVerification;
+                $dbotp->txn_id = time();
+                $dbotp->user_id = $user->id;
+                $dbotp->OTP = $botp;
+                $dbotp->sent_for = "email_otp_login";
+                $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
+                $dbotp->save();
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'OTP Sent sucessfully.',
+                    'user'      => $user->only('id','email','mobile')
+                ], 200);
+
+            }else{
+                return response([
+                    'status'    => false,
+                    'message'   => 'Something went wrong. Please check your email address.',
+                ], 500);
+            }
+        }else{
+            return response([
+                'status'    => false,
+                'message'   => 'User not found with this email address.',
+            ], 404);
+        }
+    }
+
+    //create new password
+    public function createNewPassword(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'new_password'      => 'required|min:8|max:50',
+            'confirm_password'  => 'required|min:8|max:50',
+            '_token'            => 'required'
+        ]);
+
+        if($validator->fails()){
+            return response([
+                'status'    => false,
+                'message'   => 'Please check your details.',
+                'error'     => $validator->errors()
+            ], 422);
+        }
+
+        if($request->new_password !== $request->confirm_password){
+            return response([
+                'status'    => false,
+                'message'   => 'New Password and Confirm Password is not same.'
+            ], 422);
+        }
+
+        //check if token is expired or not
+        try {
+            $token = decrypt($request->_token , 1);
+            if(date("Y-m-d H:i:s", strtotime($token['expires'])) < date('Y-m-d H:i:s')) {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Session has been expired!'
+                ], 200);
+            }
+
+            $user = User::find($token['user']);
+            if($user){
+
+                $user->password = Hash::make($request->new_password);
+                $user->save();
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'You successfully changed your password.'
+                ], 200);
+            }else{
+                return response([
+                    'status'    => false,
+                    'message'   => 'You are not authorized to change password.'
+                ], 401);
+            }
+
+        }catch(FFIException $e){
+           return response([
+                'status'    => false,
+                'message'   => $e->getMessage()
+           ], 500);
         }
     }
 

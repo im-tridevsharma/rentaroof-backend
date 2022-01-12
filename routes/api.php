@@ -52,8 +52,10 @@ use Illuminate\Support\Facades\Broadcast;
 Route::group(['prefix' => 'auth'], function ($router) {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('otp', [AuthController::class, 'sendOtp']);
+    Route::post('email-otp', [AuthController::class, 'sendOtpEmail']);
     Route::post('email-verification', [AuthController::class, 'emailVerify']);
     Route::post('mobile-verification', [AuthController::class, 'mobileVerify']);
+    Route::post('create-new-password', [AuthController::class, 'createNewPassword']);
     Route::post('refresh', [AuthController::class, 'refresh']);
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('profile', [AuthController::class, 'profile']);
