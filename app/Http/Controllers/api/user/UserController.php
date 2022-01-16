@@ -145,18 +145,24 @@ class UserController extends Controller
             if ($user->save()) {
                 //save address
                 $address = $user->address_id ? Address::find($user->address_id) : new Address;
+                
                 if ($address) {
                     $address->user_id = $user->id;
-                    $address->landmark = isset($request->landmark) ? $request->landmark : (isset($address->landmark) ? $address->landmark : '');
-                    $address->house_number = isset($request->house_number) ? $request->house_number : (isset($address->house_number) ? $address->house_number : '');
-                    $address->full_address = isset($request->full_address) ? $request->full_address : (isset($address->full_address) ? $address->full_address : '');
-                    $address->country = isset($request->country) ? $request->country : (isset($address->country) ? $address->country : NULL);
-                    $address->state = isset($request->state) ? $request->state : (isset($address->state) ? $address->state : NULL);
-                    $address->city = isset($request->city) ? $request->city : (isset($address->city) ? $address->city : NULL);
-                    $address->pincode = isset($request->pincode) ? $request->pincode : (isset($address->pincode) ? $address->pincode : '');
-
-                    $address->lat = isset($request->lat) ? $request->lat : (isset($address->lat) ? $address->lat : '');
-                    $address->long = isset($request->long) ? $request->long : (isset($address->long) ? $address->long : '');
+                    $address->landmark = isset($request->landmark) ? $request->landmark : '';
+                    $address->house_number = isset($request->house_number) ? $request->house_number :  '';
+                    $address->lat = isset($request->lattitude) ? $request->lattitude : 0.0;
+                    $address->long = isset($request->longitude) ? $request->longitude : 0.0;
+                    $address->pincode = isset($request->pincode) ? $request->pincode : '';
+                    $address->country = isset($request->country) ? $request->country : '';
+                    $address->state = isset($request->state) ? $request->state : '';
+                    $address->city = isset($request->city) ? $request->city : '';
+                    $address->zone = isset($request->zone) ? $request->zone : '';
+                    $address->area = isset($request->area) ? $request->area : '';
+                    $address->sub_area = isset($request->sub_area) ? $request->sub_area : '';
+                    $address->route = isset($request->route) ? $request->route : '';
+                    $address->neighborhood = isset($request->neighborhood) ? $request->neighborhood : '';
+                    $address->place_id = isset($request->place_id) ? $request->place_id : '';
+                    $address->full_address = isset($request->full_address) ? $request->full_address : '';
 
                     if ($address->save()) {
                         $user->address_id = $address->id;

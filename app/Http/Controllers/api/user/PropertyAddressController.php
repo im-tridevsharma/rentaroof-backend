@@ -38,7 +38,10 @@ class PropertyAddressController extends Controller
             'propertyId' => 'required',
             'lattitude' => 'required',
             'longitude' => 'required',
-            'pincode'   => 'required|max:6|min:6'
+            'pincode'   => 'required|max:6|min:6',
+            'country'   => 'required',
+            'state'     => 'required',
+            'city'      => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -52,13 +55,19 @@ class PropertyAddressController extends Controller
         $address = new Address;
 
         $address->landmark = isset($request->landmark) ? $request->landmark : '';
-        $address->house_number = isset($request->house_number) ? $request->house_number : '';
-        $address->lat = isset($request->lattitude) ? $request->lattitude : '';
-        $address->long = isset($request->longitude) ? $request->longitude : '';
+        $address->house_number = isset($request->house_number) ? $request->house_number :  '';
+        $address->lat = isset($request->lattitude) ? $request->lattitude : 0.0;
+        $address->long = isset($request->longitude) ? $request->longitude : 0.0;
         $address->pincode = isset($request->pincode) ? $request->pincode : '';
-        $address->country = isset($request->country) ? $request->country : NULL;
-        $address->state = isset($request->state) ? $request->state : NULL;
-        $address->city = isset($request->city) ? $request->city : NULL;
+        $address->country = isset($request->country) ? $request->country : '';
+        $address->state = isset($request->state) ? $request->state : '';
+        $address->city = isset($request->city) ? $request->city : '';
+        $address->zone = isset($request->zone) ? $request->zone : '';
+        $address->area = isset($request->area) ? $request->area : '';
+        $address->sub_area = isset($request->sub_area) ? $request->sub_area : '';
+        $address->route = isset($request->route) ? $request->route : '';
+        $address->neighborhood = isset($request->neighborhood) ? $request->neighborhood : '';
+        $address->place_id = isset($request->place_id) ? $request->place_id : '';
         $address->full_address = isset($request->full_address) ? $request->full_address : '';
 
         $address->property_id = $request->propertyId;
@@ -67,11 +76,10 @@ class PropertyAddressController extends Controller
         if ($address->save()) {
             $p = Property::find($request->propertyId);
             $p->address_id = $address->id;
-            $p->country_name = !empty($request->country) ? Country::find($request->country)->name : '';
-            $p->state_name = !empty($request->state) ? State::find($request->state)->name : '';
-            $p->city_name = !empty($request->city) ? City::find($request->city)->name : '';
-            $p->pincode = !empty($request->pincode) ? $request->pincode : '';
-            $p->locations = implode(",", $request->locations ?? '');
+            $p->country_name = $request->country ?? '';
+            $p->state_name = $request->state ?? '';
+            $p->city_name = $request->city ?? '';
+            $p->pincode = $request->pincode ?? '';
             $p->save();
 
             return response([
@@ -123,7 +131,10 @@ class PropertyAddressController extends Controller
             'propertyId' => 'required',
             'lattitude' => 'required',
             'longitude' => 'required',
-            'pincode'   => 'required|max:6|min:6'
+            'pincode'   => 'required|max:6|min:6',
+            'country'   => 'required',
+            'state'     => 'required',
+            'city'      => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -138,24 +149,29 @@ class PropertyAddressController extends Controller
         $address = $address ? $address : new Address;
 
         if ($address) {
-            $address->landmark = isset($request->landmark) ? $request->landmark : $address->landmark;
-            $address->house_number = isset($request->house_number) ? $request->house_number :  $address->house_number;
-            $address->lat = isset($request->lattitude) ? $request->lattitude : $address->lat;
-            $address->long = isset($request->longitude) ? $request->longitude : $address->long;
-            $address->pincode = isset($request->pincode) ? $request->pincode : $address->pincode;
-            $address->country = isset($request->country) ? $request->country : $address->country;
-            $address->state = isset($request->state) ? $request->state : $address->state;
-            $address->city = isset($request->city) ? $request->city : $address->city;
-            $address->full_address = isset($request->full_address) ? $request->full_address : $address->full_address;
+            $address->landmark = isset($request->landmark) ? $request->landmark : '';
+            $address->house_number = isset($request->house_number) ? $request->house_number :  '';
+            $address->lat = isset($request->lattitude) ? $request->lattitude : 0.0;
+            $address->long = isset($request->longitude) ? $request->longitude : 0.0;
+            $address->pincode = isset($request->pincode) ? $request->pincode : '';
+            $address->country = isset($request->country) ? $request->country : '';
+            $address->state = isset($request->state) ? $request->state : '';
+            $address->city = isset($request->city) ? $request->city : '';
+            $address->zone = isset($request->zone) ? $request->zone : '';
+            $address->area = isset($request->area) ? $request->area : '';
+            $address->sub_area = isset($request->sub_area) ? $request->sub_area : '';
+            $address->route = isset($request->route) ? $request->route : '';
+            $address->neighborhood = isset($request->neighborhood) ? $request->neighborhood : '';
+            $address->place_id = isset($request->place_id) ? $request->place_id : '';
+            $address->full_address = isset($request->full_address) ? $request->full_address : '';
 
             if ($address->save()) {
                 $p = Property::find($request->propertyId);
                 $p->address_id = $address->id;
-                $p->country_name = !empty($request->country) ? Country::find($request->country)->name : '';
-                $p->state_name = !empty($request->state) ? State::find($request->state)->name : '';
-                $p->city_name = !empty($request->city) ? City::find($request->city)->name : '';
-                $p->pincode = !empty($request->pincode) ? $request->pincode : '';
-                $p->locations = implode(",", $request->locations ?? '');
+                $p->country_name = $request->country ?? '';
+                $p->state_name = $request->state ?? '';
+                $p->city_name = $request->city ?? '';
+                $p->pincode = $request->pincode ?? '';
                 $p->save();
 
                 return response([

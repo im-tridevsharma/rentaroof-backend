@@ -535,17 +535,17 @@ class PropertyController extends Controller
         $validator = Validator::make($request->all(), [
             'name'  => 'required|string|between:2,100',
             'short_description' => 'required|string|max:255',
-            'for'   => 'required|in:rent,sale',
+            'for'   => 'required|in:rent',
             'type'  => 'required',
-            'posting_as'    => 'required|in:full_house,sharing_basis',
-            'ownership_type'    => 'required|in:sole,joint,ownership',
-            'furnished_status'  => 'required|in:furnished,unfurnished,semi-furnished,ongoing',
+            'posting_as'    => 'required',
+            'ownership_type'    => 'required',
+            'furnished_status'  => 'required',
             'bedrooms'  => 'required',
             'balconies' => 'required',
             'floors'    => 'required',
             'bathrooms' => 'required',
             'super_area'    => 'required',
-            'super_area_unit'   => 'required|in:sqft,cm,m',
+            'super_area_unit'   => 'required',
             'available_from'    => 'required',
             'monthly_rent'      => 'required',
             'security_amount'   => 'required',
@@ -608,6 +608,7 @@ class PropertyController extends Controller
         }
 
         $property->description = $request->description ? $request->description : '';
+        $property->advance_amount_period = $request->advance_amount_period ?? '';
 
         $property->front_image = '';
         $property->posted_by = JWTAuth::user()->id;
@@ -735,17 +736,17 @@ class PropertyController extends Controller
         $validator = Validator::make($request->all(), [
             'name'  => 'required|string|between:2,100',
             'short_description' => 'required|string|max:255',
-            'for'   => 'required|in:rent,sale',
+            'for'   => 'required|in:rent',
             'type'  => 'required',
-            'posting_as'    => 'required|in:full_house,sharing_basis',
-            'ownership_type'    => 'required|in:sole,joint,ownership',
-            'furnished_status'  => 'required|in:furnished,unfurnished,semi-furnished,ongoing',
+            'posting_as'    => 'required',
+            'ownership_type'    => 'required',
+            'furnished_status'  => 'required',
             'bedrooms'  => 'required',
             'balconies' => 'required',
             'floors'    => 'required',
             'bathrooms' => 'required',
             'super_area'    => 'required',
-            'super_area_unit'   => 'required|in:sqft,cm,m',
+            'super_area_unit'   => 'required',
             'available_from'    => 'required',
             'monthly_rent'      => 'required',
             'security_amount'   => 'required',
@@ -830,12 +831,13 @@ class PropertyController extends Controller
                 $property->inspection_time_to = $request->inspection_time_to;
             }
 
-            $property->description = $request->description ? $request->description : $property->description;
-            $property->maintenence_charge = $request->maintenence_charge ? $request->maintenence_charge : $property->maintenence_charge;
-            $property->maintenence_duration = $request->maintenence_duration ? $request->maintenence_duration : $property->maintenence_duration;
-            $property->lease_period = $request->lease_period ? $request->lease_period : $property->lease_period;
-            $property->offered_price = $request->offered_price ? $request->offered_price : $property->offered_price;
-
+            $property->description = $request->description ? $request->description : '';
+            $property->maintenence_charge = $request->maintenence_charge ? $request->maintenence_charge : 0;
+            $property->maintenence_duration = $request->maintenence_duration ? $request->maintenence_duration : '';
+            $property->lease_period = $request->lease_period ? $request->lease_period : '';
+            $property->offered_price = $request->offered_price ? $request->offered_price : 0;
+            $property->advance_amount_period = $request->advance_amount_period ?? '';
+            
             if (JWTAuth::user() && JWTAuth::user()->role === 'landlord') {
                 $property->landlord = JWTAuth::user()->id;
             }
@@ -947,6 +949,7 @@ class PropertyController extends Controller
         $essential->property_id = $request->propertyId;
 
         $essential->school = isset($request->school) ? $request->school : '';
+        $essential->metro = isset($request->metro) ? $request->metro : '';
         $essential->hospital = isset($request->hospital) ? $request->hospital : '';
         $essential->airport = isset($request->airport) ? $request->airport : '';
         $essential->train = isset($request->train) ? $request->train : '';
@@ -999,12 +1002,13 @@ class PropertyController extends Controller
         if ($essential) {
             $essential->property_id = $request->propertyId;
 
-            $essential->school = isset($request->school) ? $request->school : $essential->school;
-            $essential->hospital = isset($request->hospital) ? $request->hospital : $essential->hospital;
-            $essential->airport = isset($request->airport) ? $request->airport : $essential->airport;
-            $essential->train = isset($request->train) ? $request->train : $essential->train;
-            $essential->market = isset($request->market) ? $request->market : $essential->market;
-            $essential->restaurent = isset($request->restaurent) ? $request->restaurent : $essential->restaurent;
+            $essential->school = isset($request->school) ? $request->school : '';
+            $essential->metro = isset($request->metro) ? $request->metro : '';
+            $essential->hospital = isset($request->hospital) ? $request->hospital : '';
+            $essential->airport = isset($request->airport) ? $request->airport : '';
+            $essential->train = isset($request->train) ? $request->train : '';
+            $essential->market = isset($request->market) ? $request->market : '';
+            $essential->restaurent = isset($request->restaurent) ? $request->restaurent : '';
             $essential->customs = json_encode($customs);
 
             $p = Property::find($request->propertyId);
