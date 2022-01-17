@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\api\admin\BlogManagement;
 use App\Http\Controllers\api\admin\PageManagement;
 use App\Http\Controllers\api\admin\SettingController as AdminSettingController;
 use Illuminate\Support\Facades\Route;
@@ -65,7 +66,9 @@ Route::get('profile/code/{code}', [AuthController::class, 'profileByCode']);
 Route::post('user/signup', [AuthController::class, 'signup']);
 
 Route::get('page', [PageManagement::class, 'getPage']);
+Route::get('blog', [BlogManagement::class, 'getBlog']);
 Route::get('pages', [PageManagement::class, 'getPages']);
+Route::get('blogs', [BlogManagement::class, 'getBlogs']);
 Route::get('website/initials/{key}', [AdminSettingController::class, 'get']);
 
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\api\admin\UserManagement;
 use App\Http\Controllers\api\admin\IBOManagement;
 use App\Http\Controllers\api\admin\LandlordManagement;
 use App\Http\Controllers\api\admin\AmenityManagement;
+use App\Http\Controllers\api\admin\BlogManagement;
 use App\Http\Controllers\api\admin\ComplainManagement;
 use App\Http\Controllers\api\admin\EmployeeManagement;
 use App\Http\Controllers\api\admin\EnquiryManagement;
@@ -125,6 +126,8 @@ Route::post('properties/assign_verification', [PropertyManagement::class, 'assig
 Route::resource('properties', PropertyManagement::class)->middleware('admin');
 //manage pages
 Route::resource('pages', PageManagement::class)->middleware('admin');
+//manage blogs
+Route::resource('blogs', BlogManagement::class)->middleware('admin');
 //manage employees
 Route::resource('employees', EmployeeManagement::class)->middleware('admin');
 //manage roles

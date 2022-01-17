@@ -57,14 +57,17 @@ class Sos extends Controller
                 'error'     => $validator->errors()
             ], 404);
         }
+    
+        $is = SosModel::where("fired_by_id", $user->id)->whereDate("created_at", date("Y-m-d"))->first();
 
-        $sos = new SosModel;
+        $sos = $is ? $is : new SosModel;
         $sos->fired_by_id       = $user->id;
         $sos->user_type         = $user->role;
         $sos->name              = $user->first . ' ' . $user->last;
         $sos->email             = $user->email;
         $sos->sos_content       = $request->sos_content;
         $sos->resolve_message   = '';
+        $sos->press_count       = $is ? $sos->press_count + 1 : 1;
         $sos->status_history    = json_encode([]);
 
         if ($sos->save()) {

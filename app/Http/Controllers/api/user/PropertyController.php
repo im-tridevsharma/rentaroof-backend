@@ -264,10 +264,47 @@ class PropertyController extends Controller
                 ], 403);
             }
 
+            //Check property owner
+            $property_owner = User::find($property->posted_by);
+            if ($property_owner->role == 'ibo') {
+                $meeting = new  Meeting;
+                $meeting->create_id = time();
+                $meeting->title = 'Property visit request';
+                $meeting->description = 'Visit for property ' . $property->property_code;
+                $meeting->user_id = $property_owner->id;
+                $meeting->user_role = $property_owner->role;
+                $meeting->property_id = $property->id;
+                $meeting->name = $request->name;
+                $meeting->contact = $request->contact;
+                $meeting->email = $request->email;
+                $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : NULL;
+                $meeting->end_time_expected = NULL;
+                $meeting->end_time = NULL;
+                $meeting->created_by_name = $request->name;
+                $meeting->created_by_role = JWTAuth::user() ? JWTAuth::user()->role : 'guest';
+                $meeting->created_by_id = JWTAuth::user() ? JWTAuth::user()->id : NULL;
+                $meeting->meeting_history = json_encode([]);
+
+                $meeting->save();
+
+                //send notification to ibo for appointment request
+                $ibo_notify = new IboNotification;
+                $ibo_notify->ibo_id = $property_owner->id;
+                $ibo_notify->type = 'Urgent';
+                $ibo_notify->title = 'You have new appointment.';
+                $ibo_notify->content = 'You have new appointment for property - ' . $property->property_code . '. Scheduled at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
+                $ibo_notify->name = 'Rent A Roof';
+                $ibo_notify->redirect = '/ibo/appointment';
+
+                $ibo_notify->save();
+
+                event(new NotificationSent($ibo_notify));
+            }
+
             $address = Address::find($property->address_id);
 
-            $latitude = $address->lat??0;
-            $longitude = $address->long??0;
+            $latitude = $address->lat ?? 0;
+            $longitude = $address->long ?? 0;
             $ibos = DB::table("addresses")
                 ->select("user_id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
@@ -279,44 +316,45 @@ class PropertyController extends Controller
             $createid = 'ID-' . time();
 
             if (count($ibos) > 0) {
-                foreach ($ibos as $ibo) {
-                    $user = User::where("role", "ibo")->where("id", $ibo->user_id)->first();
-                    if ($user) {
-                        $meeting = new  Meeting;
-                        $meeting->create_id = $createid;
-                        $meeting->title = 'Property visit request';
-                        $meeting->description = 'Visit for property ' . $property->property_code;
-                        $meeting->user_id = $user->id;
-                        $meeting->user_role = $user->role;
-                        $meeting->property_id = $property->id;
-                        $meeting->name = $request->name;
-                        $meeting->contact = $request->contact;
-                        $meeting->email = $request->email;
-                        $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : NULL;
-                        $meeting->end_time_expected = NULL;
-                        $meeting->end_time = NULL;
-                        $meeting->created_by_name = $request->name;
-                        $meeting->created_by_role = JWTAuth::user() ? JWTAuth::user()->role : 'guest';
-                        $meeting->created_by_id = JWTAuth::user() ? JWTAuth::user()->id : NULL;
-                        $meeting->meeting_history = json_encode([]);
+                if ($property_owner && $property_owner->role !== 'ibo') {
+                    foreach ($ibos as $ibo) {
+                        $user = User::where("role", "ibo")->where("id", $ibo->user_id)->first();
+                        if ($user) {
+                            $meeting = new  Meeting;
+                            $meeting->create_id = $createid;
+                            $meeting->title = 'Property visit request';
+                            $meeting->description = 'Visit for property ' . $property->property_code;
+                            $meeting->user_id = $user->id;
+                            $meeting->user_role = $user->role;
+                            $meeting->property_id = $property->id;
+                            $meeting->name = $request->name;
+                            $meeting->contact = $request->contact;
+                            $meeting->email = $request->email;
+                            $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : NULL;
+                            $meeting->end_time_expected = NULL;
+                            $meeting->end_time = NULL;
+                            $meeting->created_by_name = $request->name;
+                            $meeting->created_by_role = JWTAuth::user() ? JWTAuth::user()->role : 'guest';
+                            $meeting->created_by_id = JWTAuth::user() ? JWTAuth::user()->id : NULL;
+                            $meeting->meeting_history = json_encode([]);
 
-                        $meeting->save();
+                            $meeting->save();
 
-                        //send notification to ibo for appointment request
-                        $ibo_notify = new IboNotification;
-                        $ibo_notify->ibo_id = $user->id;
-                        $ibo_notify->type = 'Urgent';
-                        $ibo_notify->title = 'You have new appointment.';
-                        $ibo_notify->content = 'You have new appointment for property - ' . $property->property_code . '. Scheduled at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
-                        $ibo_notify->name = 'Rent A Roof';
-                        $ibo_notify->redirect = '/ibo/appointment';
+                            //send notification to ibo for appointment request
+                            $ibo_notify = new IboNotification;
+                            $ibo_notify->ibo_id = $user->id;
+                            $ibo_notify->type = 'Urgent';
+                            $ibo_notify->title = 'You have new appointment.';
+                            $ibo_notify->content = 'You have new appointment for property - ' . $property->property_code . '. Scheduled at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
+                            $ibo_notify->name = 'Rent A Roof';
+                            $ibo_notify->redirect = '/ibo/appointment';
 
-                        $ibo_notify->save();
+                            $ibo_notify->save();
 
-                        event(new NotificationSent($ibo_notify));
+                            event(new NotificationSent($ibo_notify));
+                        }
                     }
                 }
-
                 //notify admin
                 $an = new AdminNotification;
                 $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
@@ -837,7 +875,7 @@ class PropertyController extends Controller
             $property->lease_period = $request->lease_period ? $request->lease_period : '';
             $property->offered_price = $request->offered_price ? $request->offered_price : 0;
             $property->advance_amount_period = $request->advance_amount_period ?? '';
-            
+
             if (JWTAuth::user() && JWTAuth::user()->role === 'landlord') {
                 $property->landlord = JWTAuth::user()->id;
             }
