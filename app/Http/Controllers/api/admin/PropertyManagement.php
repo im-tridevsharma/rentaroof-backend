@@ -5,6 +5,7 @@ namespace App\Http\Controllers\api\admin;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Amenity;
+use App\Models\Preference;
 use Illuminate\Http\Request;
 
 use App\Models\Property;
@@ -59,6 +60,7 @@ class PropertyManagement extends Controller
         $property->verification = $pv;
         if ($property) {
             $amenities_data = [];
+            $preferences_data = [];
             //find and merge amenities
             $amenities = json_decode($property->amenities);
             if (is_array($amenities)) {
@@ -66,7 +68,15 @@ class PropertyManagement extends Controller
                     array_push($amenities_data, Amenity::find($a));
                 }
             }
+            $preferences = json_decode($property->preferences);
+            if (is_array($preferences)) {
+                foreach ($preferences as $p) {
+                    array_push($preferences_data, Preference::find($p));
+                }
+            }
+
             $property->amenities_data = $amenities_data;
+            $property->preferences_data = $preferences_data;
             $property->owner_data = User::find($property->posted_by);
 
             return response([

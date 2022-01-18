@@ -30,14 +30,12 @@ use App\Http\Controllers\api\user\TrainingController;
 use App\Http\Controllers\api\user\UserController;
 use App\Http\Controllers\api\user\UserSavedPropertyController;
 use App\Http\Controllers\api\user\WalletController;
-use App\Models\Agreement;
 use App\Models\Amenity;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Location;
 use App\Models\Preference;
 use App\Models\State;
-use Illuminate\Support\Facades\Broadcast;
 
 /*
 |--------------------------------------------------------------------------

@@ -355,6 +355,15 @@ class PropertyController extends Controller
                         }
                     }
                 }
+            
+            } else {
+                return response([
+                    'status'    => true,
+                    'message'   => 'Sorry! Executives are not available right now.',
+                ], 400);
+            }
+
+            if(count($ibos) > 0 || $property_owner->role == 'ibo'){
                 //notify admin
                 $an = new AdminNotification;
                 $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
@@ -394,11 +403,6 @@ class PropertyController extends Controller
                     'status'    => true,
                     'message'   => 'Secheduled successfully.',
                 ], 200);
-            } else {
-                return response([
-                    'status'    => true,
-                    'message'   => 'Sorry! Executives are not available right now.',
-                ], 400);
             }
         }
 
@@ -411,16 +415,71 @@ class PropertyController extends Controller
     //search properties
     public function search(Request $request)
     {
+        $userLocation = isset($_COOKIE['user-location']) ? json_decode($_COOKIE['user-location']) : false;
+        
+        $locations = Address::where(function($q) use($request, $userLocation) {
+           
+            if(($userLocation && $userLocation->state) || $request->state){
+                $state = $userLocation->state ?? $request->state;
+                $q->where("state", "like", "%".$state."%");
+            }
+
+            if(($userLocation && $userLocation->city) || $request->city){
+                $city = $userLocation->city ?? $request->city;
+                $q->orWhere("city", "like", "%".$city."%");
+            }
+
+            if(($userLocation && $userLocation->zone) || $request->zone){
+                $zone = $userLocation->zone ?? $request->zone;
+                $q->orWhere("zone", "like", "%".$zone."%");
+            }
+
+            if(($userLocation && $userLocation->area) || $request->area){
+                $area = $userLocation->area ?? $request->area;
+                $q->orWhere("area", "like", "%".$area."%");
+            }
+
+            if(($userLocation && $userLocation->sub_area) || $request->sub_area){
+                $sub_area = $userLocation->sub_area ?? $request->sub_area;
+                $q->orWhere("sub_area", "like", "%".$sub_area."%");
+            }
+
+            if(($userLocation && $userLocation->route) || $request->route){
+                $route = $userLocation->route ?? $request->route;
+                $q->orWhere("route", "like", "%".$route."%");
+            }
+
+            if(($userLocation && $userLocation->pincode) || $request->pincode){
+                $pincode = $userLocation->pincode ?? $request->pincode;
+                $q->orWhere("pincode", "like", "%".$pincode."%");
+            }
+
+        });
+        
+        if($request->search_radius){
+            //search radius
+            $latitude = $userLocation->lat ?? $request->lat ?? 0;
+            $longitude = $userLocation->lng ?? $request->lng ?? 0;
+            
+            $address_within_radius = DB::table("addresses")
+                ->select("id",DB::raw("6371 * acos(cos(radians(" . $latitude . "))
+                * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
+                + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
+                ->having('distance', '<', $request->search_radius ?? 5)
+                ->orderBy('distance', 'asc')->distinct()->pluck('id')->toArray();
+            
+            $locations->whereIn("id", $address_within_radius);
+        }
+
+        
+        $locations = $locations->pluck('id')->toArray();
+
         $properties = Property::where("is_approved", 1)->where(function ($query) use ($request) {
             if ($request->has('search') && !empty($request->search)) {
                 $query->where("name", "like", "%" . $request->search . "%");
                 $query->orWhere("property_code", "like", "%" . $request->search . "%");
-                $query->orWhere("country_name", "like", "%" . $request->search . "%");
-                $query->orWhere("state_name", "like", "%" . $request->search . "%");
-                $query->orWhere("city_name", "like", "%" . $request->search . "%");
-                $query->orWhere("pincode", "like", "%" . $request->search . "%");
             }
-        })->where(function ($q) use ($request) {
+        })->where(function ($q) use ($request, $locations) {
             if ($request->has('posted_by') && !empty($request->posted_by)) {
                 $q->where("posted_by", $request->posted_by);
             }
@@ -444,12 +503,18 @@ class PropertyController extends Controller
                 $a = implode('", "', $a);
                 $q->whereRaw('JSON_CONTAINS(amenities, \'["' . $a . '"]\')');
             }
-            if ($request->has('min_price') && !empty($request->min_price)) {
-                $q->where("monthly_rent", ">=", $request->min_price);
+
+
+            if ($request->has('budget') && !empty($request->budget)) {
+                $price = explode("-", $request->budget);
+                $min_price = floatval($price[0]);
+                $max_price = floatval($price[1]);
+
+                $q->where("monthly_rent", ">=", $min_price);
+                $q->where("monthly_rent", "<=", $max_price);
             }
-            if ($request->has('max_price') && !empty($request->max_price)) {
-                $q->where("monthly_rent", "<=", $request->max_price);
-            }
+
+
             if ($request->has('min_size') && !empty($request->min_size)) {
                 $q->where("super_area", ">=", $request->min_size);
             }
@@ -465,6 +530,9 @@ class PropertyController extends Controller
             if ($request->has('available_to') && !empty($request->available_to)) {
                 $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
             }
+                
+            $q->whereIn("address_id", $locations);
+            
         })->with("address");
 
         if ($request->has("sorting")) {
