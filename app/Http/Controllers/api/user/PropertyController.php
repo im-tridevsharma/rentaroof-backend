@@ -309,7 +309,7 @@ class PropertyController extends Controller
                 ->select("user_id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
                 + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
-                ->having('distance', '>', 20)
+                ->having('distance', '<', 50)
                 ->orderBy('distance', 'asc')->distinct()
                 ->where("user_id", "!=", NULL)->get();
 

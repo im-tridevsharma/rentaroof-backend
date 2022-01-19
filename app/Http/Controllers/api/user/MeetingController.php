@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Meeting;
 use App\Models\Property;
 use App\Models\User;
+use App\Models\VvcCode;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class MeetingController extends Controller
@@ -39,16 +40,34 @@ class MeetingController extends Controller
             return response([
                 'status'    => true,
                 'message'   => 'Meetings fetched successfully.',
-                'data'      => $meetings->map(function ($m) {
+                'data'      => $meetings->map(function ($m) use($user) {
                     $p = Property::find($m->property_id);
                     $u = User::find($m->user_id);
+                    $vvcode = null;
+                    if($user->role === 'ibo'){
+                        $vvcode = VvcCode::where("property_id", $p->id)->where("ibo_id", $m->user_id)->first();
+                        $vvcode = $vvcode ? $vvcode->vvc_code : null;
+                    }
+                    if($user->role === 'tenant'){
+                        $vvcode = VvcCode::where("property_id", $p->id)->where("tenant_id", $m->user_id)->first();
+                        $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+                    }
+
                     $m->property_data = $p->name . ' - ' . $p->property_code;
+                    $m->vvc = $vvcode;
+
+                    if($user->role === 'ibo'):
                     $m->property_monthly_rent = $p->monthly_rent;
                     $m->property_security_amount = $p->security_amount;
+                    $m->property_asking_price = $p->offered_price;
                     $m->property_posted_by = $p->posted_by;
+                    $m->landlord = User::select(['id','first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
+                    endif;
+                    if($user->role === 'landlord'):
+                    $m->ibo_id = $u->id;
+                    endif;
                     $m->front_image = $p->front_image;
                     $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
-                    $m->landlord = User::select(['first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
                     $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
                     $m->agreement = $a;
                     return $m;
@@ -184,12 +203,17 @@ class MeetingController extends Controller
                     foreach ($allm as $m) {
                         $p = Property::find($m->property_id);
                         $u = User::find($m->user_id);
+
+                        $vvcode = VvcCode::where("property_id", $p->id)->where("landlord_id", $p->posted_by)->first();
+                        $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
+
                         $m->property_data = $p->name . ' - ' . $p->property_code;
                         $m->property_monthly_rent = $p->monthly_rent;
                         $m->property_security_amount = $p->security_amount;
                         $m->property_posted_by = $p->posted_by;
                         $m->front_image = $p->front_image;
                         $m->ibo = $u->first . ' ' . $u->last;
+                        $m->vvc = $vvcode;
                         $m->landlord = User::select(['first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
                         $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
                         $m->agreement = $a;
@@ -559,6 +583,51 @@ class MeetingController extends Controller
                     } else {
                         Meeting::where("create_id", $meeting->create_id)->update(["user_id" => 0]);
                     }
+                }
+
+                if($request->status === 'on the way'){
+                    $vproperty = Property::find($meeting->property_id);
+                    //generate vvc
+                    $vvc = new VvcCode;
+                    $vvc->property_id = $meeting->property_id;
+                    $vvc->ibo_id = $meeting->user_id;
+                    $vvc->tenant_id = $meeting->created_by_id;
+                    $vvc->landlord_id = $vproperty->posted_by;
+                    $vvc->vvc_code = 'VVC-'.time();
+                    $vvc->code_for_tenant = rand(111111,999999);
+                    $vvc->code_for_landlord = rand(111111,999999);
+
+                    $vvc->save();
+
+                    //notify user
+                    $unotify = new TenantNotification;
+                    $unotify->tenant_id = $meeting->created_by_id;
+                    $unotify->type = 'Urgent';
+                    $unotify->title = 'VVC has been generated for property visit.';
+                    $unotify->content = 'VVC for '.$vproperty->name .'('.$vproperty->property_code.') is '.$vvc->code_for_tenant;
+                    $unotify->name = 'Rent A Roof';
+                    $unotify->save();
+                    event(new NotificationSent($unotify));
+
+                    //notify landlord
+                    $lnotify = new LandlordNotification;
+                    $lnotify->landlord_id = $vproperty->posted_by;
+                    $lnotify->type = 'Urgent';
+                    $lnotify->title = 'VVC has been generated for property visit.';
+                    $lnotify->content = 'VVC for '.$vproperty->name .'('.$vproperty->property_code.') is '.$vvc->code_for_landlord;
+                    $lnotify->name = 'Rent A Roof';
+                    $lnotify->save();
+                    event(new NotificationSent($lnotify));
+
+                    //notify ibo
+                    $inotify = new IboNotification;
+                    $inotify->ibo_id = $meeting->user_id;
+                    $inotify->type = 'Urgent';
+                    $inotify->title = 'VVC has been generated for property visit.';
+                    $inotify->content = 'VVC for '.$vproperty->name .'('.$vproperty->property_code.') is '.$vvc->vvc_code;
+                    $inotify->name = 'Rent A Roof';
+                    $inotify->save();
+                    event(new NotificationSent($inotify));
                 }
 
                 //notifications
