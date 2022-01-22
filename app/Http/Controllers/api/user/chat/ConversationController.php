@@ -136,11 +136,14 @@ class ConversationController extends Controller
         $is = Conversation::where("sender_id", $request->sender_id)
             ->where("receiver_id", $request->receiver_id)->first();
 
-        if ($is) {
+        $oris = Conversation::where("sender_id", $request->receiver_id)
+            ->where("receiver_id", $request->sender_id)->first();
+
+        if ($is || $oris) {
             return response([
                 'status'    => true,
                 'message'   => 'Conversation exists already.',
-                'data'      => $is
+                'data'      => $is ? $is : $oris
             ], 200);
         }
 

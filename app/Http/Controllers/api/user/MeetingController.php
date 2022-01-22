@@ -45,11 +45,22 @@ class MeetingController extends Controller
                     $u = User::find($m->user_id);
                     $vvcode = null;
                     if($user->role === 'ibo'){
-                        $vvcode = VvcCode::where("property_id", $p->id)->where("ibo_id", $m->user_id)->first();
+                        $vvcode = VvcCode::where("property_id", $p->id)
+                        ->where("tenant_id", $m->created_by_id)
+                        ->where("landlord_id", $p->posted_by)
+                        ->where("ibo_id", $m->user_id)->first();
+                        $m->tenant_vvc = $vvcode->code_for_tenant;
+                        $m->landlord_vvc = $vvcode->code_for_landlord;
+                        $m->is_tenant_vvc_verified = $vvcode->tenant_verified;
+                        $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
                         $vvcode = $vvcode ? $vvcode->vvc_code : null;
                     }
                     if($user->role === 'tenant'){
-                        $vvcode = VvcCode::where("property_id", $p->id)->where("tenant_id", $m->user_id)->first();
+                        $vvcode = VvcCode::where("property_id", $p->id)
+                        ->where("tenant_id", $m->created_by_id)
+                        ->where("landlord_id", $p->posted_by)
+                        ->where("ibo_id", $m->user_id)->first();
+                        $m->is_tenant_vvc_verified = $vvcode->tenant_verified;
                         $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
                     }
 
@@ -79,6 +90,27 @@ class MeetingController extends Controller
             'status'    => false,
             'message'   => 'Something went wrong.'
         ], 500);
+    }
+
+    //vvc status
+    public function update_vvc(Request $request)
+    {
+        $vvc_code = $request->vvc;
+        if($request->type && in_array( $request->type, ['tenant', 'landlord']))
+        {
+            $data = $request->type === 'tenant' ? ["tenant_verified" => $request->status] : ["landlord_verified" => $request->status];
+            VvcCode::where("vvc_code", $vvc_code)->update($data);
+
+            return response([
+                'status'    => true,
+                'message'   => 'Status changed successfully.'
+            ]);
+        }else{
+            return response([
+                "status"    => false,
+                "message"   => 'Request is not valid.'
+            ], 422);
+        }
     }
 
     //meeting_count_for_mobile
@@ -152,6 +184,35 @@ class MeetingController extends Controller
 
         foreach ($meetings as $m) {
             if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                $p = Property::find($m->property_id);
+                $vvcode = null;
+                if($user->role === 'ibo'){
+                    $vvcode = VvcCode::where("property_id", $p->id)
+                    ->where("tenant_id", $m->created_by_id)
+                    ->where("landlord_id", $p->posted_by)
+                    ->where("ibo_id", $m->user_id)->first();
+                    $m->is_tenant_vvc_verified = $vvcode->tenant_verified;
+                    $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
+                    $vvcode = $vvcode ? $vvcode->vvc_code : null;
+                }
+                if($user->role === 'tenant'){
+                    $vvcode = VvcCode::where("property_id", $p->id)
+                    ->where("tenant_id", $m->created_by_id)
+                    ->where("landlord_id", $p->posted_by)
+                    ->where("ibo_id", $m->user_id)->first();
+                    $m->is_tenant_vvc_verified = $vvcode->tenant_verified;
+                    $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+                }
+                if($user->role === 'landlord'){
+                    $vvcode = VvcCode::where("property_id", $p->id)
+                    ->where("landlord_id", $p->posted_by)
+                    ->where("tenant_id", $m->created_by_id)
+                    ->where("ibo_id", $m->user_id)->first();
+                    $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
+                    $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+                }
+
+                $m->vvc = $vvcode;
                 array_push($today, $m);
             }
             if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
@@ -204,9 +265,13 @@ class MeetingController extends Controller
                         $p = Property::find($m->property_id);
                         $u = User::find($m->user_id);
 
-                        $vvcode = VvcCode::where("property_id", $p->id)->where("landlord_id", $p->posted_by)->first();
-                        $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
-
+                        $vvcode = VvcCode::where("property_id", $p->id)
+                        ->where("landlord_id", $p->posted_by)
+                        ->where("tenant_id", $m->created_by_id)
+                        ->where("ibo_id", $m->user_id)->first();
+                        $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
+                        $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+                    
                         $m->property_data = $p->name . ' - ' . $p->property_code;
                         $m->property_monthly_rent = $p->monthly_rent;
                         $m->property_security_amount = $p->security_amount;
@@ -304,6 +369,14 @@ class MeetingController extends Controller
 
                     foreach ($allm as $m) {
                         if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                            $vvcode = null;
+                            $vvcode = VvcCode::where("property_id", $p->id)
+                            ->where("landlord_id", $p->posted_by)
+                            ->where("tenant_id", $m->created_by_id)
+                            ->where("ibo_id", $m->user_id)->first();
+                            $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
+                            $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+                            $m->vvc = $vvcode;
                             array_push($today, $m);
                         }
                         if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
@@ -587,6 +660,13 @@ class MeetingController extends Controller
 
                 if($request->status === 'on the way'){
                     $vproperty = Property::find($meeting->property_id);
+
+                    //delete old vvc
+                    VvcCode::where("property_id", $meeting->property_id)
+                    ->where("ibo_id", $meeting->user_id)
+                    ->where("tenant_id", $meeting->created_by_id)
+                    ->where("landlord_id", $vproperty->posted_by)->delete();
+
                     //generate vvc
                     $vvc = new VvcCode;
                     $vvc->property_id = $meeting->property_id;

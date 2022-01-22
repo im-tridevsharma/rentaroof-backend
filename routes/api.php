@@ -213,6 +213,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::get('meetings/for_mobile/details', [MeetingController::class, 'meeting_count_for_mobile_all']);
     Route::get('meetings/for_mobile/landlord/{id}', [MeetingController::class, 'landlord_meetings_mobile']);
     Route::get('meetings/for_mobile/landlord/{id}/details', [MeetingController::class, 'landlord_meetings_mobile_all']);
+    Route::post('meetings/vvc/status', [MeetingController::class, 'update_vvc']);
     Route::resource('meetings', MeetingController::class);
 
     //Trainning

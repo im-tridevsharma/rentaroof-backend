@@ -415,51 +415,49 @@ class PropertyController extends Controller
     //search properties
     public function search(Request $request)
     {
-        $userLocation = isset($_COOKIE['user-location']) ? json_decode($_COOKIE['user-location']) : false;
-        
-        $locations = Address::where(function($q) use($request, $userLocation) {
+        $locations = Address::where(function($q) use($request) {
            
-            if(($userLocation && $userLocation->state) || $request->state){
-                $state = $userLocation->state ?? $request->state;
+            if(!empty($request->state)){
+                $state = $request->state ?? '';
                 $q->where("state", "like", "%".$state."%");
             }
 
-            if(($userLocation && $userLocation->city) || $request->city){
-                $city = $userLocation->city ?? $request->city;
+            if(!empty($request->city)){
+                $city = $request->city ?? '';
                 $q->orWhere("city", "like", "%".$city."%");
             }
 
-            if(($userLocation && $userLocation->zone) || $request->zone){
-                $zone = $userLocation->zone ?? $request->zone;
+            if(!empty($request->zone)){
+                $zone = $request->zone ?? '';
                 $q->orWhere("zone", "like", "%".$zone."%");
             }
 
-            if(($userLocation && $userLocation->area) || $request->area){
-                $area = $userLocation->area ?? $request->area;
+            if(!empty($request->area)){
+                $area = $request->area ?? '';
                 $q->orWhere("area", "like", "%".$area."%");
             }
 
-            if(($userLocation && $userLocation->sub_area) || $request->sub_area){
-                $sub_area = $userLocation->sub_area ?? $request->sub_area;
+            if(!empty($request->sub_area)){
+                $sub_area = $request->sub_area ?? '';
                 $q->orWhere("sub_area", "like", "%".$sub_area."%");
             }
 
-            if(($userLocation && $userLocation->route) || $request->route){
-                $route = $userLocation->route ?? $request->route;
+            if(!empty($request->route)){
+                $route = $request->route ?? '';
                 $q->orWhere("route", "like", "%".$route."%");
             }
 
-            if(($userLocation && $userLocation->pincode) || $request->pincode){
-                $pincode = $userLocation->pincode ?? $request->pincode;
+            if(!empty($request->pincode) ){
+                $pincode = $request->pincode ?? '';
                 $q->orWhere("pincode", "like", "%".$pincode."%");
             }
 
         });
         
-        if($request->search_radius){
+        if(!empty($request->search_radius)){
             //search radius
-            $latitude = $userLocation->lat ?? $request->lat ?? 0;
-            $longitude = $userLocation->lng ?? $request->lng ?? 0;
+            $latitude = $request->lat ?? 0;
+            $longitude = $request->lng ?? 0;
             
             $address_within_radius = DB::table("addresses")
                 ->select("id",DB::raw("6371 * acos(cos(radians(" . $latitude . "))
@@ -471,7 +469,6 @@ class PropertyController extends Controller
             $locations->whereIn("id", $address_within_radius);
         }
 
-        
         $locations = $locations->pluck('id')->toArray();
 
         $properties = Property::where("is_approved", 1)->where(function ($query) use ($request) {
@@ -530,8 +527,12 @@ class PropertyController extends Controller
             if ($request->has('available_to') && !empty($request->available_to)) {
                 $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
             }
-                
-            $q->whereIn("address_id", $locations);
+
+            if($request->state || $request->city || $request->area ||
+            $request->sub_area || $request->zone || $request->pincode 
+            || $request->route){
+                $q->whereIn("address_id", $locations);
+            }
             
         })->with("address");
 
