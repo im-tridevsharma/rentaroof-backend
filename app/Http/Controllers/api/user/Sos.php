@@ -65,6 +65,9 @@ class Sos extends Controller
         $sos->user_type         = $user->role;
         $sos->name              = $user->first . ' ' . $user->last;
         $sos->email             = $user->email;
+        $sos->mobile            = $user->mobile;
+        $sos->lat               = $request->lat ?? 0;
+        $sos->lng               = $request->lng ?? 0;
         $sos->sos_content       = $request->sos_content;
         $sos->resolve_message   = '';
         $sos->press_count       = $is ? $sos->press_count + 1 : 1;

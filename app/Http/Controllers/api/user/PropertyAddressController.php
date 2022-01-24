@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\api\user;
 
+use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\City;
 use App\Models\Country;
+use App\Models\IboNotification;
 use App\Models\Property;
 use App\Models\State;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class PropertyAddressController extends Controller
@@ -81,6 +85,61 @@ class PropertyAddressController extends Controller
             $p->city_name = $request->city ?? '';
             $p->pincode = $request->pincode ?? '';
             $p->save();
+            
+             //assign property verification to nearest ibo
+
+             $latitude = $request->lattitude ?? 0;
+             $longitude = $request->longitude ?? 0;
+             $ibos = DB::table("addresses")
+                 ->select("user_id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
+                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
+                 + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
+                 ->having('distance', '<', 50)
+                 ->orderBy('distance', 'asc')->distinct()
+                 ->where("user_id", "!=", NULL)->get();
+             
+                if(count($ibos) > 0){
+                 foreach($ibos as $ibo) {
+                     $user = User::where("role", "ibo")->where("id", $ibo->user_id)->first();
+                     if($user){
+
+                         $data = [
+                             'property_id'   => $p->id,
+                             'ibo_id'        => $user->id,
+                             'message'       => 'Auto assigned by Rent A Roof.',
+                             'created_at'    => date("Y-m-d H:i:s"),
+                             'updated_at'    => date("Y-m-d H:i:s")
+                         ];
+             
+                         $is = DB::table('property_verifications')->where("property_id", $p->id)->first();
+             
+                         if ($is) {
+                             $data['status'] = 'pending';
+                             $data['reason_for_rejection'] = '';
+             
+                             DB::table('property_verifications')->where("id", $is->id)->update($data);
+                             return response([
+                                 'status'    => true,
+                                 'message'   => 'Assigned for verification successfully.',
+                                 'data'      => $data
+                             ], 200);
+                         }
+                         DB::table('property_verifications')->insert($data);
+
+                         //notify ibo
+                         $ibo_notify = new IboNotification;
+                         $ibo_notify->ibo_id = $user->id;
+                         $ibo_notify->title = 'Property Verification Request';
+                         $ibo_notify->content = 'You have been assigned property verification by Rent A Roof.';
+                         $ibo_notify->type = 'Urgent';
+                         $ibo_notify->name = 'Rent A Roof';
+                         $ibo_notify->redirect = '/ibo/property-verification';
+
+                         $ibo_notify->save();
+                         event(new NotificationSent($ibo_notify));
+                     }
+                 }
+             }
 
             return response([
                 'status'    => true,

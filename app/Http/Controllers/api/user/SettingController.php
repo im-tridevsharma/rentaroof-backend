@@ -145,6 +145,7 @@ class SettingController extends Controller
 
         $user = User::find($id);
         if ($user) {
+            $user->deactivate_reason = $request->reason ?? '';
             $user->account_status = $request->status;
             if ($user->save()) {
                 return response([

@@ -135,6 +135,7 @@ class UserController extends Controller
             $user->mobile = isset($request->mobile) ? $request->mobile : (!empty($user->mobile) ? $user->mobile : NULL);
             $user->gender = isset($request->gender) ? $request->gender : '';
             $user->experience = isset($request->experience) ? $request->experience : NULL;
+            $user->category = isset($request->category) ? $request->category : '';
             $user->operating_since = isset($request->operating_since) ? $request->operating_since : 0;
             $user->ibo_duty_mode = isset($request->ibo_duty_mode) ? $request->ibo_duty_mode : NULL;
             $user->username = isset($request->username) ? $request->username : NULL;
@@ -175,7 +176,12 @@ class UserController extends Controller
                     $kyc = $user->kyc_id ? KycVerification::find($user->kyc_id) : new KycVerification;
                     $kyc->document_type = $request->doc_type;
                     $kyc->user_id = $user->id;
-                    $kyc->document_number = '';
+                    $kyc->document_number = $request->document_number ?? '';
+                    $kyc->present_address = $request->present_address ?? '';
+                    $kyc->permanent_address = $request->permanent_address ?? '';
+                    $kyc->ref_user_name = $request->ref_user_name ?? '';
+                    $kyc->ref_user_email = $request->ref_user_email ?? '';
+                    $kyc->ref_user_address = $request->ref_user_address ?? '';
 
                     //upload kyc document to server
                     if ($request->hasFile('document')) {

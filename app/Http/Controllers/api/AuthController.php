@@ -188,7 +188,8 @@ class AuthController extends Controller
             'role' => $user->role,
             'profile_pic' => $user->profile_pic,
             'permissions' => [],
-            'account_status'  => $user->account_status
+            'account_status'  => $user->account_status,
+            'deactivate_reason' => $user->deactivate_reason
         ];
         return $this->respondWithToken($token, $info);
     }

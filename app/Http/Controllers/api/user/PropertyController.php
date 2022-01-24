@@ -12,6 +12,7 @@ use App\Models\Agreement;
 use App\Models\Amenity;
 use App\Models\IboEarning;
 use App\Models\IboNotification;
+use App\Models\KycVerification;
 use App\Models\LandlordNotification;
 use App\Models\Meeting;
 use App\Models\Preference;
@@ -202,8 +203,14 @@ class PropertyController extends Controller
                 "reason_for_rejection"    => !empty($request->reason) ? $request->reason : '',
                 "updated_at"    => date("Y-m-d H:i:s")
             ];
-
+            
             DB::table('property_verifications')->where("id", $id)->update($data);
+
+            //delete rest if exist
+            if($request->status === 'accepted'){
+                DB::table('property_verifications')->where("ibo_id", "!=", JWTAuth::user()->id)
+                ->where("property_id", $is->property_id)->delete();
+            }
 
             $returndata = DB::table('property_verifications')->where("id", $id)->first();
             if ($returndata) {
@@ -665,6 +672,34 @@ class PropertyController extends Controller
                 'message'   => 'Some errors occured',
                 'error'     => $validator->errors()
             ], 400);
+        }
+
+        //check if user is verified or not
+        $user = JWTAuth::user();
+        if($user->account_status !== 'activated'){
+            return response([
+                'status'    => false,
+                'message'   => 'Your account is not activated to post your property. Please contact 
+                to Administrator.'
+            ], 401);    
+        }
+
+        if($user->account_status == 'activated'){
+            $kyc = KycVerification::where("user_id", $user->id)->first();
+            if(!$kyc){
+                return response([
+                    'status'    => false,
+                    'message'   => 'You havn\'t uploaded KYC Details yet.'
+                ], 401);    
+            }
+
+            if($kyc && !$kyc->is_verified){
+                return response([
+                    'status'    => false,
+                    'message'   => 'Your KYC Details is not valid to post your property. Please contact 
+                    to Administrator.'
+                ], 401);    
+            }
         }
 
         $property = new Property($request->input());
@@ -1658,5 +1693,41 @@ class PropertyController extends Controller
             'status'    => false,
             'message'   => 'User is not authorized.'
         ], 401);
+    }
+
+
+    //get property for deal
+    public function dealableProperty(Request $request)
+    {
+        if($request->has('tenant_id') && $request->has('ibo_id')){
+            $last_appointment = Meeting::where("user_id", $request->ibo_id)
+            ->where("created_by_id", $request->tenant_id)
+            ->where("meeting_status", "visited")
+            ->orderBy("id", "desc")->first();
+
+            if($last_appointment){
+                $access = ['id','property_code','name', 'front_image','monthly_rent'];
+                if(JWTAuth::user()->role === 'ibo'){
+                    array_push($access, 'offered_price');
+                }
+
+                $property = Property::find($last_appointment->property_id)->only($access);
+                return response([
+                    'status'    => true,
+                    'message'   => 'Dealable property.',
+                    'data'      => $property
+                ], 200);
+            }else{
+                return response([
+                    'status'    => false,
+                    'message'   => 'No found any property.'
+                ], 404);  
+            }
+        }else{
+            return response([
+                'status'    => false,
+                'message'   => 'Request is not valid.'
+            ], 422);    
+        }  
     }
 }
