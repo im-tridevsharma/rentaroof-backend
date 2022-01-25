@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\IboEarning;
 use App\Models\KycVerification;
+use App\Models\LandlordEarning;
+use App\Models\Property;
 use App\Models\PropertyDeal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -146,7 +148,7 @@ class UserController extends Controller
             if ($user->save()) {
                 //save address
                 $address = $user->address_id ? Address::find($user->address_id) : new Address;
-                
+
                 if ($address) {
                     $address->user_id = $user->id;
                     $address->landmark = isset($request->landmark) ? $request->landmark : '';
@@ -298,11 +300,27 @@ class UserController extends Controller
     {
         $user = JWTAuth::user();
         if ($user) {
-            $deals = PropertyDeal::where("created_by", $user->id)->get()->map(function ($d) {
-                $for = User::select(["first", "last"])->find($d->offer_for);
-                $d->user = $for;
-                return $d;
-            });
+
+            if ($user->role !== 'landlord') {
+
+                $deals = PropertyDeal::where("created_by", $user->id)->get()->map(function ($d) {
+                    $for = User::select(["first", "last"])->find($d->offer_for);
+                    $d->user = $for;
+                    return $d;
+                });
+            } else {
+
+                $properties = Property::where("posted_by", $user->id)->pluck("id")->toArray();
+                $deals = PropertyDeal::whereIn("property_id", $properties)->get()->map(function ($d) {
+                    $for = User::select(['first', 'last', 'role'])->find($d->offer_for);
+                    $by  = User::select(['first', 'last', 'role'])->find($d->created_by);
+
+                    $d->to = $for;
+                    $d->by = $by;
+
+                    return $d;
+                });
+            }
 
             return response([
                 'status'    => true,
@@ -337,6 +355,7 @@ class UserController extends Controller
         ], 404);
     }
 
+
     //ibo income cards
     public function income_cards()
     {
@@ -347,16 +366,16 @@ class UserController extends Controller
         $income_breakdown = 0.0;
         $this_year_total  = 0.0;
         $last_year_total  = 0.0;
-        
+
         //this month
         $this_month_earning = IboEarning::whereMonth("created_at", date("m"))->whereYear("created_at", date("Y"))->where("ibo_id", $ibo->id)->get();
-        foreach($this_month_earning as $e){
+        foreach ($this_month_earning as $e) {
             $this_month_total += floatval($e->amount);
         }
 
         //last month
         $last_month_earning = IboEarning::whereMonth("created_at", date("m", strtotime('last month')))->whereYear("created_at", date("Y", strtotime('last month')))->where("ibo_id", $ibo->id)->get();
-        foreach($last_month_earning as $e){
+        foreach ($last_month_earning as $e) {
             $last_month_total += floatval($e->amount);
         }
 
@@ -364,13 +383,13 @@ class UserController extends Controller
 
         //this year
         $this_yaer_earning = IboEarning::whereYear("created_at", date("Y"))->where("ibo_id", $ibo->id)->get();
-        foreach($this_yaer_earning as $e){
+        foreach ($this_yaer_earning as $e) {
             $this_year_total += floatval($e->amount);
         }
 
         //last year
         $last_yaer_earning = IboEarning::whereYear("created_at", date("Y", strtotime('last year')))->where("ibo_id", $ibo->id)->get();
-        foreach($last_yaer_earning as $e){
+        foreach ($last_yaer_earning as $e) {
             $last_year_total += floatval($e->amount);
         }
 
@@ -392,9 +411,9 @@ class UserController extends Controller
     public function ibo_deals_earning()
     {
         $ibo = JWTAuth::user();
-        $earnings = IboEarning::where("ibo_id", $ibo->id)->get()->map(function($d){
+        $earnings = IboEarning::where("ibo_id", $ibo->id)->get()->map(function ($d) {
             $deal = PropertyDeal::find($d->deal_id);
-            $d->is_closed = $deal ? $deal->is_closed : 0;
+            $d->is_closed = $deal ? $deal->status === 'accepted' : 0;
             $d->user = User::find($deal->offer_for ?? 0)->first ?? '';
 
             return $d;
@@ -412,12 +431,129 @@ class UserController extends Controller
     {
         $ibo = JWTAuth::user();
         $years = [];
-        $months = ['Jan','Feb','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        $months = ['Jan', 'Feb', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-        foreach($months as $m){
+        foreach ($months as $m) {
             $total = 0;
-            $earnings = IboEarning::whereMonth("created_at", date('m', strtotime($m.date('Y'))))->whereYear("created_at", date('Y'))->where("ibo_id", $ibo->id)->get();
-            foreach($earnings as $e){
+            $earnings = IboEarning::whereMonth("created_at", date('m', strtotime($m . date('Y'))))->whereYear("created_at", date('Y'))->where("ibo_id", $ibo->id)->get();
+            foreach ($earnings as $e) {
+                $total += floatval($e->amount);
+            }
+
+            $years[$m] = $total;
+        }
+
+        return response([
+            'status'    => true,
+            'message'   => 'Year\'s income month wise fetched successfully.',
+            'data'      => $years
+        ], 200);
+    }
+
+
+    //landlord earnings
+    //get_earnings
+    public function get_landlord_earnings()
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $earnings = LandlordEarning::where("landlord_id", $user->id)->get();
+
+            return response([
+                'status'    => true,
+                'message'   => 'Earnings fetched successfully.',
+                'data'      => $earnings
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'User not found.'
+        ], 404);
+    }
+
+
+    //ibo income cards
+    public function landlord_income_cards()
+    {
+        $landlord = JWTAuth::user();
+
+        $this_month_total = 0.0;
+        $last_month_total = 0.0;
+        $income_breakdown = 0.0;
+        $this_year_total  = 0.0;
+        $last_year_total  = 0.0;
+
+        //this month
+        $this_month_earning = LandlordEarning::whereMonth("created_at", date("m"))->whereYear("created_at", date("Y"))->where("landlord_id", $landlord->id)->get();
+        foreach ($this_month_earning as $e) {
+            $this_month_total += floatval($e->amount);
+        }
+
+        //last month
+        $last_month_earning = LandlordEarning::whereMonth("created_at", date("m", strtotime('last month')))->whereYear("created_at", date("Y", strtotime('last month')))->where("landlord_id", $landlord->id)->get();
+        foreach ($last_month_earning as $e) {
+            $last_month_total += floatval($e->amount);
+        }
+
+        $income_breakdown = $last_month_total - $this_month_total;
+
+        //this year
+        $this_yaer_earning = LandlordEarning::whereYear("created_at", date("Y"))->where("landlord_id", $landlord->id)->get();
+        foreach ($this_yaer_earning as $e) {
+            $this_year_total += floatval($e->amount);
+        }
+
+        //last year
+        $last_yaer_earning = LandlordEarning::whereYear("created_at", date("Y", strtotime('last year')))->where("landlord_id", $landlord->id)->get();
+        foreach ($last_yaer_earning as $e) {
+            $last_year_total += floatval($e->amount);
+        }
+
+        return response([
+            'status'    => true,
+            'message'   => 'Landlord Earning Cards fetched successfully.',
+            'data'      => [
+                "this_month"    => $this_month_total,
+                "per_month"     => $last_month_total,
+                "breakdown"     => $income_breakdown,
+                "breakdown_sign" => $income_breakdown > 0 ? '-' : '+',
+                "this_year"     => $this_year_total,
+                "last_year"     => $last_year_total
+            ]
+        ], 200);
+    }
+
+    //deals earning
+    public function landlord_deals_earning()
+    {
+        $ibo = JWTAuth::user();
+        $earnings = LandlordEarning::where("landlord_id", $ibo->id)->get()->map(function ($d) {
+            $deal = PropertyDeal::find($d->deal_id);
+            $d->is_closed = $deal ? $deal->status == 'accepted' : 0;
+            $d->user = User::find($deal->offer_for ?? 0)->first ?? '';
+
+            return $d;
+        });
+
+        return response([
+            'status'    => true,
+            'message'   => 'Deals Earning fetched successfully.',
+            'data'      => $earnings
+        ], 200);
+    }
+
+    //earning for year month wise
+    public function landlord_earning_for_year()
+    {
+        $landlord = JWTAuth::user();
+        $years = [];
+        $months = ['Jan', 'Feb', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        foreach ($months as $m) {
+            $total = 0;
+            $earnings = LandlordEarning::whereMonth("created_at", date('m', strtotime($m . date('Y'))))->whereYear("created_at", date('Y'))->where("landlord_id", $landlord->id)->get();
+            foreach ($earnings as $e) {
                 $total += floatval($e->amount);
             }
 

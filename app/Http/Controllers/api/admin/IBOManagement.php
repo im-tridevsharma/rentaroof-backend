@@ -326,8 +326,8 @@ class IBOManagement extends Controller
                 $kyc = $kyc ? $kyc : new KycVerification;
                 if ($kyc) {
                     $kyc->user_id = $user->id;
-                    $kyc->document_type = isset($request->document_type) ? $request->document_type : (isset($kyc->document_type) ? $kyc->document_type : '');
-                    $kyc->document_number = isset($request->document_number) ? $request->document_number : (isset($kyc->document_number) ? $kyc->document_number : '');
+                    $kyc->document_type = isset($request->document_type) ? $request->document_type : '';
+                    $kyc->document_number = isset($request->document_number) ? $request->document_number : '';
 
                     $kyc_upload = '';
                     if ($request->hasFile('document_file')) {

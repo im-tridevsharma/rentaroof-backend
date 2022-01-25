@@ -7,12 +7,16 @@ use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
 use App\Models\Agreement;
+use App\Models\IboEarning;
 use App\Models\IboNotification;
+use App\Models\LandlordEarning;
 use App\Models\LandlordNotification;
 use App\Models\Property;
+use App\Models\PropertyDeal;
 use App\Models\TenantNotification;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Models\Wallet;
 use Exception;
 use Illuminate\Support\Facades\Validator;
@@ -86,7 +90,7 @@ class RazorpayController extends Controller
             return response([
                 'status'    => false,
                 'message'   => 'Razorpay errors occured.',
-                'error'     => $error
+                'error'     => $error->getMessage()
             ]);
         }
     }
@@ -118,6 +122,8 @@ class RazorpayController extends Controller
                         $agreement = Agreement::where("id", $payment->type_id)->first();
                         $agreement->number_of_invoices = Transaction::where("type_id", $agreement->id)->count();
 
+                        $this_due = $agreement->next_due;
+
                         if ($agreement->payment_frequency === 'monthly') {
                             $agreement->next_due = Carbon::parse($agreement->next_due)->addMonth();
                         }
@@ -133,6 +139,35 @@ class RazorpayController extends Controller
 
                         $agreement->save();
 
+                        //landlord earning goes here for rent paid
+                        //deal done for this property
+                        $deal = PropertyDeal::where("property_id", $agreement->property_id)
+                            ->where("status", "accepted")->first();
+
+                        $_user = User::find($agreement->landlord_id);
+
+                        if ($_user->role === 'landlord') {
+                            $landlordEarning = new LandlordEarning;
+                            $landlordEarning->landlord_id = $agreement->landlord_id;
+                            $landlordEarning->property_id = $agreement->property_id;
+                            $landlordEarning->type = "rent";
+                            $landlordEarning->date = date("Y-m-d", strtotime($this_due));
+                            $landlordEarning->agreement_id = $agreement->id;
+                            $landlordEarning->amount = $payment->paid;
+                            $landlordEarning->deal_id = $deal->id;
+
+                            $landlordEarning->save();
+                        } else {
+                            $iboEarning = new IboEarning;
+                            $iboEarning->landlord_id = $agreement->landlord_id;
+                            $iboEarning->property_id = $agreement->property_id;
+                            $iboEarning->type = "rent";
+                            $iboEarning->date = date("Y-m-d", strtotime($this_due));
+                            $iboEarning->agreement_id = $agreement->id;
+                            $iboEarning->amount = $payment->paid;
+                            $iboEarning->deal_id = $deal->id;
+                        }
+
                         //notify user
                         $user_notify = new TenantNotification;
                         $user_notify->tenant_id = $agreement->tenant_id;
@@ -144,7 +179,7 @@ class RazorpayController extends Controller
                         $user_notify->save();
                         event(new NotificationSent($user_notify));
 
-                        //notify landlord 
+                        //notify landlord
                         $landlord_notify = new LandlordNotification;
                         $landlord_notify->landlord_id = $agreement->landlord_id;
                         $landlord_notify->type = 'Urgent';
@@ -155,7 +190,7 @@ class RazorpayController extends Controller
                         $landlord_notify->save();
                         event(new NotificationSent($landlord_notify));
 
-                        //send notification to ibo 
+                        //send notification to ibo
                         $ibo_notify = new IboNotification;
                         $ibo_notify->ibo_id = $agreement->ibo_id;
                         $ibo_notify->type = 'Urgent';
@@ -195,7 +230,7 @@ class RazorpayController extends Controller
                     return response([
                         'status'    => false,
                         'message'   => 'Razorpay errors occured.',
-                        'error'     => $error
+                        'error'     => $error->getMessage()
                     ]);
                 }
             }

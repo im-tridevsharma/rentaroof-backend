@@ -9,6 +9,7 @@ use App\Models\Meeting;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -140,6 +141,14 @@ class MeetingManagement extends Controller
             $ibo_notify->save();
 
             event(new NotificationSent($ibo_notify));
+
+            //if payment slipt is enabled store it
+            if ($request->has('payment_split') && $request->payment_split === 'yes') {
+                DB::table('payment_splits')->insert([
+                    'property_id'   => $property->id,
+                    'ibo_id'        => $request->ibo_id,
+                ]);
+            }
 
             return response([
                 'status'    => true,

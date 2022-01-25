@@ -203,13 +203,13 @@ class PropertyController extends Controller
                 "reason_for_rejection"    => !empty($request->reason) ? $request->reason : '',
                 "updated_at"    => date("Y-m-d H:i:s")
             ];
-            
+
             DB::table('property_verifications')->where("id", $id)->update($data);
 
             //delete rest if exist
-            if($request->status === 'accepted'){
+            if ($request->status === 'accepted') {
                 DB::table('property_verifications')->where("ibo_id", "!=", JWTAuth::user()->id)
-                ->where("property_id", $is->property_id)->delete();
+                    ->where("property_id", $is->property_id)->delete();
             }
 
             $returndata = DB::table('property_verifications')->where("id", $id)->first();
@@ -362,7 +362,6 @@ class PropertyController extends Controller
                         }
                     }
                 }
-            
             } else {
                 return response([
                     'status'    => true,
@@ -370,7 +369,7 @@ class PropertyController extends Controller
                 ], 400);
             }
 
-            if(count($ibos) > 0 || $property_owner->role == 'ibo'){
+            if (count($ibos) > 0 || $property_owner->role == 'ibo') {
                 //notify admin
                 $an = new AdminNotification;
                 $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
@@ -422,57 +421,56 @@ class PropertyController extends Controller
     //search properties
     public function search(Request $request)
     {
-        $locations = Address::where(function($q) use($request) {
-           
-            if(!empty($request->state)){
+        $locations = Address::where(function ($q) use ($request) {
+
+            if (!empty($request->state)) {
                 $state = $request->state ?? '';
-                $q->where("state", "like", "%".$state."%");
+                $q->where("state", "like", "%" . $state . "%");
             }
 
-            if(!empty($request->city)){
+            if (!empty($request->city)) {
                 $city = $request->city ?? '';
-                $q->orWhere("city", "like", "%".$city."%");
+                $q->orWhere("city", "like", "%" . $city . "%");
             }
 
-            if(!empty($request->zone)){
+            if (!empty($request->zone)) {
                 $zone = $request->zone ?? '';
-                $q->orWhere("zone", "like", "%".$zone."%");
+                $q->orWhere("zone", "like", "%" . $zone . "%");
             }
 
-            if(!empty($request->area)){
+            if (!empty($request->area)) {
                 $area = $request->area ?? '';
-                $q->orWhere("area", "like", "%".$area."%");
+                $q->orWhere("area", "like", "%" . $area . "%");
             }
 
-            if(!empty($request->sub_area)){
+            if (!empty($request->sub_area)) {
                 $sub_area = $request->sub_area ?? '';
-                $q->orWhere("sub_area", "like", "%".$sub_area."%");
+                $q->orWhere("sub_area", "like", "%" . $sub_area . "%");
             }
 
-            if(!empty($request->route)){
+            if (!empty($request->route)) {
                 $route = $request->route ?? '';
-                $q->orWhere("route", "like", "%".$route."%");
+                $q->orWhere("route", "like", "%" . $route . "%");
             }
 
-            if(!empty($request->pincode) ){
+            if (!empty($request->pincode)) {
                 $pincode = $request->pincode ?? '';
-                $q->orWhere("pincode", "like", "%".$pincode."%");
+                $q->orWhere("pincode", "like", "%" . $pincode . "%");
             }
-
         });
-        
-        if(!empty($request->search_radius)){
+
+        if (!empty($request->search_radius)) {
             //search radius
             $latitude = $request->lat ?? 0;
             $longitude = $request->lng ?? 0;
-            
+
             $address_within_radius = DB::table("addresses")
-                ->select("id",DB::raw("6371 * acos(cos(radians(" . $latitude . "))
+                ->select("id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
                 + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
                 ->having('distance', '<', $request->search_radius ?? 5)
                 ->orderBy('distance', 'asc')->distinct()->pluck('id')->toArray();
-            
+
             $locations->whereIn("id", $address_within_radius);
         }
 
@@ -535,12 +533,13 @@ class PropertyController extends Controller
                 $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
             }
 
-            if($request->state || $request->city || $request->area ||
-            $request->sub_area || $request->zone || $request->pincode 
-            || $request->route){
+            if (
+                $request->state || $request->city || $request->area ||
+                $request->sub_area || $request->zone || $request->pincode
+                || $request->route
+            ) {
                 $q->whereIn("address_id", $locations);
             }
-            
         })->with("address");
 
         if ($request->has("sorting")) {
@@ -676,29 +675,29 @@ class PropertyController extends Controller
 
         //check if user is verified or not
         $user = JWTAuth::user();
-        if($user->account_status !== 'activated'){
+        if ($user->account_status !== 'activated') {
             return response([
                 'status'    => false,
-                'message'   => 'Your account is not activated to post your property. Please contact 
+                'message'   => 'Your account is not activated to post your property. Please contact
                 to Administrator.'
-            ], 401);    
+            ], 401);
         }
 
-        if($user->account_status == 'activated'){
+        if ($user->account_status == 'activated') {
             $kyc = KycVerification::where("user_id", $user->id)->first();
-            if(!$kyc){
+            if (!$kyc) {
                 return response([
                     'status'    => false,
                     'message'   => 'You havn\'t uploaded KYC Details yet.'
-                ], 401);    
+                ], 401);
             }
 
-            if($kyc && !$kyc->is_verified){
+            if ($kyc && !$kyc->is_verified) {
                 return response([
                     'status'    => false,
-                    'message'   => 'Your KYC Details is not valid to post your property. Please contact 
+                    'message'   => 'Your KYC Details is not valid to post your property. Please contact
                     to Administrator.'
-                ], 401);    
+                ], 401);
             }
         }
 
@@ -1477,15 +1476,29 @@ class PropertyController extends Controller
                 $isearning = IboEarning::where("ibo_id", $agreement->ibo_id)->where("agreement_id", $agreement->id)->where("deal_id", $deal->id)->where("property_id", $agreement->property_id)->count();
 
                 if (!$isearning) {
-                    $earning = new IboEarning;
-                    $earning->ibo_id = $agreement->ibo_id;
-                    $earning->deal_id = $deal ? $deal->id : 0;
-                    $earning->property_id = $agreement->property_id;
-                    $earning->agreement_id = $agreement->id;
-                    $earning->amount_percentage = $agreement->fee_percentage;
-                    $earning->amount = $agreement->fee_amount;
 
-                    $earning->save();
+                    //get list of ibos for payment
+                    $ibos = DB::table('payment_splits')
+                        ->where("property_id", $agreement->property_id)
+                        ->where("paid", 0)
+                        ->where("accepted", 1)->get();
+
+                    foreach ($ibos as $ibo) {
+                        $earning = new IboEarning;
+                        $earning->ibo_id = $ibo->ibo_id;
+                        $earning->deal_id = $deal ? $deal->id : 0;
+                        $earning->property_id = $agreement->property_id;
+                        $earning->agreement_id = $agreement->id;
+                        $earning->amount_percentage = $agreement->fee_percentage / count($ibos);
+                        $earning->amount = $agreement->fee_amount / count($ibos);
+
+                        $earning->save();
+
+                        //mark as paid
+                        DB::table('payment_splits')
+                            ->where("ibo_id", $ibo->ibo_id)
+                            ->update(['paid' => 1]);
+                    }
                 }
             }
 
@@ -1699,15 +1712,15 @@ class PropertyController extends Controller
     //get property for deal
     public function dealableProperty(Request $request)
     {
-        if($request->has('tenant_id') && $request->has('ibo_id')){
+        if ($request->has('tenant_id') && $request->has('ibo_id')) {
             $last_appointment = Meeting::where("user_id", $request->ibo_id)
-            ->where("created_by_id", $request->tenant_id)
-            ->where("meeting_status", "visited")
-            ->orderBy("id", "desc")->first();
+                ->where("created_by_id", $request->tenant_id)
+                ->where("meeting_status", "visited")
+                ->orderBy("id", "desc")->first();
 
-            if($last_appointment){
-                $access = ['id','property_code','name', 'front_image','monthly_rent'];
-                if(JWTAuth::user()->role === 'ibo'){
+            if ($last_appointment) {
+                $access = ['id', 'property_code', 'name', 'front_image', 'monthly_rent'];
+                if (JWTAuth::user()->role === 'ibo') {
                     array_push($access, 'offered_price');
                 }
 
@@ -1717,17 +1730,17 @@ class PropertyController extends Controller
                     'message'   => 'Dealable property.',
                     'data'      => $property
                 ], 200);
-            }else{
+            } else {
                 return response([
                     'status'    => false,
                     'message'   => 'No found any property.'
-                ], 404);  
+                ], 404);
             }
-        }else{
+        } else {
             return response([
                 'status'    => false,
                 'message'   => 'Request is not valid.'
-            ], 422);    
-        }  
+            ], 422);
+        }
     }
 }
