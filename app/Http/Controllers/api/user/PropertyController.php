@@ -321,6 +321,7 @@ class PropertyController extends Controller
                 ->where("user_id", "!=", NULL)->get();
 
             $createid = 'ID-' . time();
+            $assigned = false;
 
             if (count($ibos) > 0) {
                 if ($property_owner && $property_owner->role !== 'ibo') {
@@ -346,6 +347,7 @@ class PropertyController extends Controller
                             $meeting->meeting_history = json_encode([]);
 
                             $meeting->save();
+                            $assigned = true;
 
                             //send notification to ibo for appointment request
                             $ibo_notify = new IboNotification;
@@ -359,17 +361,24 @@ class PropertyController extends Controller
                             $ibo_notify->save();
 
                             event(new NotificationSent($ibo_notify));
+                        } else {
+                            $assigned = false;
                         }
                     }
+                } else {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'Sorry! Executives are not available right now.',
+                    ], 400);
                 }
             } else {
                 return response([
-                    'status'    => true,
+                    'status'    => false,
                     'message'   => 'Sorry! Executives are not available right now.',
                 ], 400);
             }
 
-            if (count($ibos) > 0 || $property_owner->role == 'ibo') {
+            if ($assigned && (count($ibos) > 0 || $property_owner->role === 'ibo')) {
                 //notify admin
                 $an = new AdminNotification;
                 $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
@@ -377,6 +386,7 @@ class PropertyController extends Controller
                 $an->title = 'New Meeting Request';
                 $an->redirect = '/admin/meetings';
                 $an->save();
+
                 event(new AdminNotificationSent($an));
 
 
@@ -409,6 +419,11 @@ class PropertyController extends Controller
                     'status'    => true,
                     'message'   => 'Secheduled successfully.',
                 ], 200);
+            } else {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Sorry! Executives are not available right now.',
+                ], 400);
             }
         }
 
@@ -685,14 +700,14 @@ class PropertyController extends Controller
 
         if ($user->account_status == 'activated') {
             $kyc = KycVerification::where("user_id", $user->id)->first();
-            if (!$kyc) {
+            if ($user->role === 'ibo' && !$kyc) {
                 return response([
                     'status'    => false,
                     'message'   => 'You havn\'t uploaded KYC Details yet.'
                 ], 401);
             }
 
-            if ($kyc && !$kyc->is_verified) {
+            if ($user->role === 'ibo' && $kyc && !$kyc->is_verified) {
                 return response([
                     'status'    => false,
                     'message'   => 'Your KYC Details is not valid to post your property. Please contact
@@ -861,7 +876,7 @@ class PropertyController extends Controller
 
         return response([
             'status'    => false,
-            'message'   => 'Something went wrong!'
+            'message'   => 'Propety not found.'
         ], 500);
     }
 
@@ -1435,112 +1450,113 @@ class PropertyController extends Controller
     //closeProperty
     public function closeProperty($code)
     {
-        $property = Property::where("property_code", $code)->first();
-        if ($property) {
-            $property->is_closed = 1;
-            $property->save();
+        try {
+            $property = Property::where("property_code", $code)->first();
+            if ($property) {
+                $property->is_closed = 1;
+                $property->save();
 
-            //notify pending appointment for this property
-            $appointments = Meeting::where("property_id", $property->id)->where("meeting_status", "pending")->get()->groupBy("create_id");
-            foreach ($appointments as $value) {
-                $a = $value[0];
-                $n = new TenantNotification;
-                $n->tenant_id = $a->created_by_id;
-                $n->type = 'Normal';
-                $n->title = 'Property Booked - ' . $property->name;
-                $n->content = 'Property already booked. You can select another property or book another property';
-                $n->name = "System";
+                //notify pending appointment for this property
+                $appointments = Meeting::where("property_id", $property->id)->where("meeting_status", "pending")->get()->groupBy("create_id");
+                foreach ($appointments as $value) {
+                    $a = $value[0];
+                    $n = new TenantNotification;
+                    $n->tenant_id = $a->created_by_id;
+                    $n->type = 'Normal';
+                    $n->title = 'Property Booked - ' . $property->name;
+                    $n->content = 'Property already booked. You can select another property or book another property';
+                    $n->name = "System";
 
-                $n->save();
+                    $n->save();
 
-                event(new NotificationSent($n));
+                    event(new NotificationSent($n));
 
-                Meeting::where("create_id", $a->create_id)->delete();
-            }
+                    Meeting::where("create_id", $a->create_id)->delete();
+                }
 
-            //notify admin
-            $an = new AdminNotification;
-            $an->content = 'Property - ' . $property->property_code . '. has been closed by owner.';
-            $an->type  = 'Urgent';
-            $an->title = 'Property Closed';
-            $an->redirect = '/admin/meetings';
+                //notify admin
+                $an = new AdminNotification;
+                $an->content = 'Property - ' . $property->property_code . '. has been closed by owner.';
+                $an->type  = 'Urgent';
+                $an->title = 'Property Closed';
+                $an->redirect = '/admin/meetings';
 
-            $an->save();
+                $an->save();
 
-            event(new AdminNotificationSent($an));
+                event(new AdminNotificationSent($an));
 
-            //pay fee to ibo for this property
-            $agreement = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
-            if ($agreement) {
-                $deal = PropertyDeal::where("property_id", $property->id)->where("status", "accepted")->first();
-                $isearning = IboEarning::where("ibo_id", $agreement->ibo_id)->where("agreement_id", $agreement->id)->where("deal_id", $deal->id)->where("property_id", $agreement->property_id)->count();
+                //pay fee to ibo for this property
+                $agreement = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
+                if ($agreement) {
+                    $deal = PropertyDeal::where("property_id", $property->id)->where("status", "accepted")->first();
+                    $isearning = IboEarning::where("ibo_id", $agreement->ibo_id)->where("agreement_id", $agreement->id)->where("deal_id", $deal->id ?? 0)->where("property_id", $agreement->property_id)->count();
 
-                if (!$isearning) {
+                    if (!$isearning) {
+                        //get list of ibos for payment
+                        $ibos = DB::table('payment_splits')
+                            ->where("property_id", $agreement->property_id)
+                            ->where("paid", 0)
+                            ->where("accepted", 1)->get();
 
-                    //get list of ibos for payment
-                    $ibos = DB::table('payment_splits')
-                        ->where("property_id", $agreement->property_id)
-                        ->where("paid", 0)
-                        ->where("accepted", 1)->get();
+                        foreach ($ibos as $ibo) {
+                            $earning = new IboEarning;
+                            $earning->ibo_id = $ibo->ibo_id;
+                            $earning->deal_id = $deal->id ?? 0;
+                            $earning->property_id = $agreement->property_id;
+                            $earning->agreement_id = $agreement->id;
+                            $earning->amount_percentage = $agreement->fee_percentage / count($ibos);
+                            $earning->amount = $agreement->fee_amount / count($ibos);
 
-                    foreach ($ibos as $ibo) {
-                        $earning = new IboEarning;
-                        $earning->ibo_id = $ibo->ibo_id;
-                        $earning->deal_id = $deal ? $deal->id : 0;
-                        $earning->property_id = $agreement->property_id;
-                        $earning->agreement_id = $agreement->id;
-                        $earning->amount_percentage = $agreement->fee_percentage / count($ibos);
-                        $earning->amount = $agreement->fee_amount / count($ibos);
+                            $earning->save();
 
-                        $earning->save();
-
-                        //mark as paid
-                        DB::table('payment_splits')
-                            ->where("ibo_id", $ibo->ibo_id)
-                            ->update(['paid' => 1]);
+                            //mark as paid
+                            DB::table('payment_splits')
+                                ->where("ibo_id", $ibo->ibo_id)
+                                ->update(['paid' => 1]);
+                        }
                     }
                 }
-            }
 
-            //points to referer on deal close
-            $agreement_ = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
-            $user = User::where("id", $agreement_->tenant_id)->first();
-            if ($user) {
-                $ruser = User::where("system_userid", $user->referral_code)->first();
-                if ($ruser) {
-                    //save point
-                    //get settings for points
-                    $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
-                    $s_point  = DB::table('settings')->where("setting_key", "referral_deal_closed_point")->first()->setting_value;
+                //points to referer on deal close
+                $agreement_ = Agreement::where("property_id", $property->id)->where("landlord_id", JWTAuth::user()->id)->first();
+                $user = User::where("id", $agreement_->tenant_id)->first();
+                if ($user) {
+                    $ruser = User::where("system_userid", $user->referral_code)->first();
+                    if ($ruser) {
+                        //save point
+                        //get settings for points
+                        $point_value  = DB::table('settings')->where("setting_key", "point_value")->first()->setting_value;
+                        $s_point  = DB::table('settings')->where("setting_key", "referral_deal_closed_point")->first()->setting_value;
 
-                    $spoints = floatval($s_point) * floatval($point_value);
+                        $spoints = floatval($s_point) * floatval($point_value);
 
-                    DB::table('user_referral_points')->insert([
-                        "user_id" => $ruser->id,
-                        "role"    => $ruser->role,
-                        "title"   => 'You earned 10 points on deal closed for user ' . $user->first,
-                        "point_value" => $point_value,
-                        "points"      => $s_point,
-                        "type"        => "credit",
-                        "amount_earned" => $spoints,
-                        "for"         => "deal closed",
-                        "created_at"  => date("Y-m-d H:i:s"),
-                        "updated_at"  => date("Y-m-d H:i:s")
-                    ]);
+                        DB::table('user_referral_points')->insert([
+                            "user_id" => $ruser->id,
+                            "role"    => $ruser->role,
+                            "title"   => 'You earned 10 points on deal closed for user ' . $user->first,
+                            "point_value" => $point_value,
+                            "points"      => $s_point,
+                            "type"        => "credit",
+                            "amount_earned" => $spoints,
+                            "for"         => "deal closed",
+                            "created_at"  => date("Y-m-d H:i:s"),
+                            "updated_at"  => date("Y-m-d H:i:s")
+                        ]);
+                    }
                 }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Property closed successfully.',
+                    'data'      => $property->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed'])
+                ], 200);
             }
-
+        } catch (Exception $e) {
             return response([
-                'status'    => true,
-                'message'   => 'Property closed successfully.',
-                'data'      => $property->only(['front_image', 'name', 'property_code', 'bedrooms', 'bathrooms', 'floors', 'monthly_rent', 'maintenence_charge', 'country_name', 'state_name', 'city_name', 'is_closed'])
-            ], 200);
+                'status'    => false,
+                'message'   => $e->getMessage() . ' > ' . $e->getLine()
+            ], 404);
         }
-
-        return response([
-            'status'    => false,
-            'message'   => 'Property not found.'
-        ], 404);
     }
 
     //openProperty
@@ -1741,6 +1757,112 @@ class PropertyController extends Controller
                 'status'    => false,
                 'message'   => 'Request is not valid.'
             ], 422);
+        }
+    }
+
+    //add property and login
+    public function storeAndLogin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'  => 'required|string|between:2,100',
+            'short_description' => 'required|string|max:255',
+            'for'   => 'required|in:rent',
+            'type'  => 'required',
+            'posting_as'    => 'required',
+            'ownership_type'    => 'required',
+            'furnished_status'  => 'required',
+            'bedrooms'  => 'required',
+            'balconies' => 'required',
+            'floors'    => 'required',
+            'bathrooms' => 'required',
+            'super_area'    => 'required',
+            'super_area_unit'   => 'required',
+            'available_from'    => 'required',
+            'monthly_rent'      => 'required',
+            'security_amount'   => 'required',
+            'age_of_construction'   => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'Some errors occured',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
+
+        $property = new Property($request->input());
+
+        $property->property_code = 'RARP-0' . rand(11111, 99999) . '0';
+
+        if (isset($request->custom_bedrooms) && !empty($request->custom_bedrooms)) {
+            $property->bedrooms = $request->custom_bedrooms;
+        }
+
+        if (isset($request->offered_price) && !empty($request->offered_price)) {
+            $property->offered_price = $request->offered_price;
+        } else {
+            $property->offered_price = 0.0;
+        }
+
+        if (isset($request->custom_bathrooms) && !empty($request->custom_bathrooms)) {
+            $property->bathrooms = $request->custom_bathrooms;
+        }
+
+        if (isset($request->custom_balconies) && !empty($request->custom_balconies)) {
+            $property->balconies = $request->custom_balconies;
+        }
+
+        if (isset($request->custom_floors) && !empty($request->custom_floors)) {
+            $property->floors = $request->custom_floors;
+        }
+
+        if (isset($request->available_immediately) && $request->available_immediately == 'on') {
+            $property->available_immediately = 1;
+        }
+
+        //inspections
+        if ($request->filled('inspection_days')) {
+            $property->inspection_days = $request->inspection_days;
+        } else {
+            $property->inspection_days = '';
+        }
+        if ($request->filled('inspection_time_from')) {
+            $property->inspection_time_from = $request->inspection_time_from;
+        } else {
+            $property->inspection_time_from = '';
+        }
+        if ($request->filled('inspection_time_to')) {
+            $property->inspection_time_to = $request->inspection_time_to;
+        } else {
+            $property->inspection_time_to = '';
+        }
+
+        $property->description = $request->description ? $request->description : '';
+        $property->advance_amount_period = $request->advance_amount_period ?? '';
+
+        $property->front_image = '';
+        $property->posted_by = 0;
+
+        try {
+            if ($property->save()) {
+                return response([
+                    'status'    => true,
+                    'message'   => 'Property added successfully.',
+                    'data'      => $property
+                ], 200);
+            }
+
+            return response([
+                'status'    => false,
+                'message'   => 'Unable to save data.'
+            ]);
+        } catch (Exception $e) {
+            return response([
+                'status'    => false,
+                'message'   => $e,
+            ], 500);
         }
     }
 }

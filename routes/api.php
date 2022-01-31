@@ -169,9 +169,10 @@ Route::get("preferences", function () {
     ]);
 });
 
+//store and login
+Route::post('/store_and_login', [PropertyController::class, 'storeAndLogin']);
 
 Route::group(['middleware' => 'jwt.verify'], function () {
-
     //payment
     Route::post('payment/order', [RazorpayController::class, 'createOrder']);
     Route::post('payment/success', [RazorpayController::class, 'successPayment']);

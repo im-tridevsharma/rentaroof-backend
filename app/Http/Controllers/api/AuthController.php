@@ -5,6 +5,7 @@ namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
 use App\Models\OTPVerification;
+use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -28,7 +29,7 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode','sendOtp','sendOtpEmail','mobileVerify','emailVerify','createNewPassword']]);
+        $this->middleware('jwt.verify', ['except' => ['login', 'signup', 'profileByCode', 'sendOtp', 'sendOtpEmail', 'mobileVerify', 'emailVerify', 'createNewPassword']]);
     }
 
     /**
@@ -54,7 +55,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $isMobileUser = false;
-        if($request->has('password') && !empty($request->password)){
+        if ($request->has('password') && !empty($request->password)) {
             $rules = [
                 'password' => 'string|min:8'
             ];
@@ -83,21 +84,21 @@ class AuthController extends Controller
 
         $user = null;
 
-        if($request->has('otp') && !empty($request->otp)){
+        if ($request->has('otp') && !empty($request->otp)) {
             //check for otp auth
             $user = $isMobileUser ? User::where("mobile", $request->email)->first() : User::where("email", $request->email)->first();
-            if($user){
-                $sent_otp = OTPVerification::where("user_id", $user->id)->where("OTP", $request->otp)->where("is_expired",0)->first(); 
-                
-                if($sent_otp && date("Y-m-d H:i:s", strtotime($sent_otp->expired_at)) < date('Y-m-d H:i:s')){
-                    
+            if ($user) {
+                $sent_otp = OTPVerification::where("user_id", $user->id)->where("OTP", $request->otp)->where("is_expired", 0)->first();
+
+                if ($sent_otp && date("Y-m-d H:i:s", strtotime($sent_otp->expired_at)) < date('Y-m-d H:i:s')) {
+
                     return response([
                         'status'    => false,
                         'message'   => 'OTP has been expired.'
-                    ], 401); 
+                    ], 401);
                 }
 
-                if(!$sent_otp || $sent_otp->OTP !== $request->otp){
+                if (!$sent_otp || $sent_otp->OTP !== $request->otp) {
                     return response([
                         'status'    => false,
                         'message'   => 'OTP is invalid. Please check once.'
@@ -106,8 +107,7 @@ class AuthController extends Controller
 
                 $sent_otp->is_expired = 1;
                 $sent_otp->save();
-
-            }else{
+            } else {
                 return response([
                     'status'    => false,
                     'message'   => $isMobileUser ? 'Mobile number is not authorized!' : 'Email address is not authorized!'
@@ -139,7 +139,7 @@ class AuthController extends Controller
 
         $token = null;
 
-        if(!$request->has('otp') || empty($request->otp)){
+        if (!$request->has('otp') || empty($request->otp)) {
             try {
                 if (!$token = JWTAuth::attempt($credentials)) {
                     return response([
@@ -153,14 +153,13 @@ class AuthController extends Controller
                     'error'     => [$e->errorInfo[count($e->errorInfo) - 1]]
                 ], 500);
             }
-        }else{
+        } else {
             try {
                 if (!$token = JWTAuth::fromUser($user)) {
                     return response([
                         'message' => $isMobileUser ? "Mobile or Password is wrong!" : "Email or Password is wrong!"
                     ], 401);
                 }
-
             } catch (Exception $e) {
                 return response([
                     'status'    =>  false,
@@ -173,9 +172,26 @@ class AuthController extends Controller
         if ($request->filled('remember_me') && $request->remember_me === 'yes') {
             JWTAuth::factory()->setTTL(60 * 24 * 356);
         }
-        
+
         $user = $user ? $user : JWTAuth::user();
         $user->is_logged_in = 1;
+
+        //before_login_added
+        $is_property_updated = false;
+        if ($request->before_login_added) {
+            $code = explode("_", $request->before_login_added);
+            $property = Property::find($code[1]);
+            if ($property && $user->role !== 'tenant') {
+                $property->posted_by = $user->id;
+                if ($user->role === 'landlord') {
+                    $property->landlord = $user->id;
+                }
+
+                $property->save();
+                $is_property_updated = true;
+            }
+        }
+
         $user->save();
         $info = [
             'id'       => $user->id,
@@ -189,7 +205,8 @@ class AuthController extends Controller
             'profile_pic' => $user->profile_pic,
             'permissions' => [],
             'account_status'  => $user->account_status,
-            'deactivate_reason' => $user->deactivate_reason
+            'deactivate_reason' => $user->deactivate_reason,
+            'is_property_updated' => $is_property_updated
         ];
         return $this->respondWithToken($token, $info);
     }
@@ -197,7 +214,7 @@ class AuthController extends Controller
     /*
     User sign up from website
     */
-    
+
     public function signup(Request $request)
     {
         $isMobileUser = false;
@@ -262,13 +279,13 @@ class AuthController extends Controller
         if ($user->save()) {
             $botp = rand(111111, 999999);
             $otp_data = [
-                'user'  => $user->first .' '. $user->last,
+                'user'  => $user->first . ' ' . $user->last,
                 'otp'   => $botp,
                 'email' => $user->email
             ];
 
             $is_sent = send_email_otp($otp_data);
-            if($is_sent == 1){
+            if ($is_sent == 1) {
                 //save this in database
                 $dbotp = new OTPVerification;
                 $dbotp->txn_id = time();
@@ -281,10 +298,9 @@ class AuthController extends Controller
 
             return response([
                 'status' => true,
-                'message'=> 'OTP has been sent on email for Email Verification. Please verify your email!',
-                'user'   => $user->only('id','email','mobile')
+                'message' => 'OTP has been sent on email for Email Verification. Please verify your email!',
+                'user'   => $user->only('id', 'email', 'mobile')
             ], 200);
-
         } else {
             return response([
                 'status' => false,
@@ -301,22 +317,22 @@ class AuthController extends Controller
 
         $user = User::find($user_id);
 
-        if($user_id && $otp && $user){
+        if ($user_id && $otp && $user) {
             $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->where("is_expired", 0)->first();
-            
-            if($votp && date("Y-m-d H:i:s", strtotime($votp->expired_at)) < date('Y-m-d H:i:s')){
+
+            if ($votp && date("Y-m-d H:i:s", strtotime($votp->expired_at)) < date('Y-m-d H:i:s')) {
                 return response([
                     'status'    => false,
                     'message'   => 'OTP has been expired.'
                 ], 200);
             }
 
-            if($votp && $votp->OTP === $otp ){
-                if(!$request->has('forgotpass')){
+            if ($votp && $votp->OTP === $otp) {
+                if (!$request->has('forgotpass')) {
                     $botp = rand(111111, 999999);
-                    $otp = 'Verify your mobile number with Rent A Roof. OTP for verification is - '.$botp;
+                    $otp = 'Verify your mobile number with Rent A Roof. OTP for verification is - ' . $botp;
                     $is_otp = sms($otp, $user->mobile);
-                    if($is_otp){
+                    if ($is_otp) {
                         //save this in database
                         $dbotp = new OTPVerification;
                         $dbotp->txn_id = $is_otp;
@@ -325,7 +341,6 @@ class AuthController extends Controller
                         $dbotp->sent_for = "mobile_verification";
                         $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
                         $dbotp->save();
-                        
                     }
                 }
 
@@ -337,18 +352,18 @@ class AuthController extends Controller
                     'message'   => $request->has('forgotpass') ? 'Create Your New Password. Session is only valid for 5 minutes.' : 'Email Verified! OTP has been sent on your mobile. Please verify it.'
                 ];
 
-                if($request->has('forgotpass')){
+                if ($request->has('forgotpass')) {
                     $res['_token'] = encrypt(['user' => $user->id, 'expires' => Carbon::now()->addMinutes(5)->format('Y-m-d H:i:s')], 1);
                 }
 
                 return response($res, 200);
-            }else{
+            } else {
                 return response([
                     'status'    => false,
                     'message'   => 'OTP doesn\'t match.'
                 ], 401);
             }
-        }else{
+        } else {
             return response([
                 'status'    => false,
                 'message'   => 'Please check your OTP. It seems invalid.'
@@ -364,24 +379,24 @@ class AuthController extends Controller
 
         $user = User::find($user_id);
 
-        if($user_id && $otp && $user){
-            $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->where("is_expired",0)->first();
-            if($votp && date("Y-m-d H:i:s", strtotime($votp->expired_at)) < date('Y-m-d H:i:s')){
+        if ($user_id && $otp && $user) {
+            $votp = OTPVerification::where("user_id", $user_id)->where("OTP", $otp)->where("is_expired", 0)->first();
+            if ($votp && date("Y-m-d H:i:s", strtotime($votp->expired_at)) < date('Y-m-d H:i:s')) {
                 return response([
                     'status'    => false,
                     'message'   => 'OTP has been expired.'
                 ], 200);
             }
-            if($votp && $votp->OTP === $otp){
+            if ($votp && $votp->OTP === $otp) {
 
-                if(!$request->has('forgotpass')){
+                if (!$request->has('forgotpass')) {
                     $this->userTools($user);
                     $user->email_verified = 1;
                     $user->mobile_verified = 1;
                     $user->account_status = "activated";
                     $user->save();
                 }
-                
+
                 $votp->is_expired = 1;
                 $votp->save();
 
@@ -390,29 +405,29 @@ class AuthController extends Controller
                     'message'   => $request->has('forgotpass') ? 'Create Your New Password. Session is only valid for 5 minutes.' : 'Mobile Verified. Redirecting you to login page.'
                 ];
 
-                if($request->has('forgotpass')){
+                if ($request->has('forgotpass')) {
                     $res['_token']  = encrypt(['user' => $user->id, 'expires' => Carbon::now()->addMinutes(5)->format('Y-m-d H:i:s')], 1);
                 }
 
                 return response($res, 200);
-            }else{
+            } else {
                 return response([
                     'status'    => false,
                     'message'   => 'OTP doesn\'t match.'
                 ], 401);
             }
-        }else{
+        } else {
             return response([
                 'status'    => false,
                 'message'   => 'Please check your OTP. It seems invalid.'
-            ], 422); 
+            ], 422);
         }
     }
 
     public function userTools($user)
     {
         //create settings if user is ibo and landlord
-        if($user->role !== 'tenant'){
+        if ($user->role !== 'tenant') {
             $settings_keys = [
                 "account_notification",
                 "receive_important_updates_on_number",
@@ -420,7 +435,7 @@ class AuthController extends Controller
                 "offers_and_updates"
             ];
 
-            foreach($settings_keys as $setting_key){
+            foreach ($settings_keys as $setting_key) {
                 $setting = DB::table('user_settings')->where("key", $setting_key)->where("user_id", $user->id)->first();
                 if ($setting) {
                     //update
@@ -498,7 +513,7 @@ class AuthController extends Controller
             'mobile'    => 'required|digits:10'
         ]);
 
-        if($validator->fails()){
+        if ($validator->fails()) {
             return response([
                 'status'    => false,
                 'message'   => 'Mobile number is not valid.',
@@ -509,12 +524,12 @@ class AuthController extends Controller
         //check is there any user with this mobile number
         $user = User::where("mobile", $request->mobile)->first();
 
-        if($user){
+        if ($user) {
             $botp = rand(111111, 999999);
-            $otp = 'OTP for Rent a Roof is - '.$botp;
+            $otp = 'OTP for Rent a Roof is - ' . $botp;
             $is_otp = sms($otp, $user->mobile);
-            
-            if($is_otp){
+
+            if ($is_otp) {
                 //save this in database
                 $dbotp = new OTPVerification;
                 $dbotp->txn_id = $is_otp;
@@ -527,15 +542,15 @@ class AuthController extends Controller
                 return response([
                     'status'    => true,
                     'message'   => 'OTP Sent sucessfully.',
-                    'user'      => $user->only('id','email','mobile')
+                    'user'      => $user->only('id', 'email', 'mobile')
                 ], 200);
-            }else{
+            } else {
                 return response([
                     'status'    => false,
                     'message'   => 'Something went wrong. Please check your mobile number.',
                 ], 500);
             }
-        }else{
+        } else {
             return response([
                 'status'    => false,
                 'message'   => 'User not found with this mobile number.',
@@ -550,7 +565,7 @@ class AuthController extends Controller
             'email'    => 'required|email'
         ]);
 
-        if($validator->fails()){
+        if ($validator->fails()) {
             return response([
                 'status'    => false,
                 'message'   => 'Email is not valid.',
@@ -561,17 +576,17 @@ class AuthController extends Controller
         //check is there any user with this mobile number
         $user = User::where("email", $request->email)->first();
 
-        if($user){
+        if ($user) {
             $botp = rand(111111, 999999);
             $otp_data = [
-                "user"  => $user->first .' '. $user->last,
+                "user"  => $user->first . ' ' . $user->last,
                 "otp"   => $botp,
                 "email" => $user->email
             ];
 
             $is_otp = send_email_otp($otp_data);
 
-            if($is_otp){
+            if ($is_otp) {
                 //save this in database
                 $dbotp = new OTPVerification;
                 $dbotp->txn_id = time();
@@ -584,16 +599,15 @@ class AuthController extends Controller
                 return response([
                     'status'    => true,
                     'message'   => 'OTP Sent sucessfully.',
-                    'user'      => $user->only('id','email','mobile')
+                    'user'      => $user->only('id', 'email', 'mobile')
                 ], 200);
-
-            }else{
+            } else {
                 return response([
                     'status'    => false,
                     'message'   => 'Something went wrong. Please check your email address.',
                 ], 500);
             }
-        }else{
+        } else {
             return response([
                 'status'    => false,
                 'message'   => 'User not found with this email address.',
@@ -610,7 +624,7 @@ class AuthController extends Controller
             '_token'            => 'required'
         ]);
 
-        if($validator->fails()){
+        if ($validator->fails()) {
             return response([
                 'status'    => false,
                 'message'   => 'Please check your details.',
@@ -618,7 +632,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        if($request->new_password !== $request->confirm_password){
+        if ($request->new_password !== $request->confirm_password) {
             return response([
                 'status'    => false,
                 'message'   => 'New Password and Confirm Password is not same.'
@@ -627,8 +641,8 @@ class AuthController extends Controller
 
         //check if token is expired or not
         try {
-            $token = decrypt($request->_token , 1);
-            if(date("Y-m-d H:i:s", strtotime($token['expires'])) < date('Y-m-d H:i:s')) {
+            $token = decrypt($request->_token, 1);
+            if (date("Y-m-d H:i:s", strtotime($token['expires'])) < date('Y-m-d H:i:s')) {
                 return response([
                     'status'    => false,
                     'message'   => 'Session has been expired!'
@@ -636,7 +650,7 @@ class AuthController extends Controller
             }
 
             $user = User::find($token['user']);
-            if($user){
+            if ($user) {
 
                 $user->password = Hash::make($request->new_password);
                 $user->save();
@@ -645,18 +659,17 @@ class AuthController extends Controller
                     'status'    => true,
                     'message'   => 'You successfully changed your password.'
                 ], 200);
-            }else{
+            } else {
                 return response([
                     'status'    => false,
                     'message'   => 'You are not authorized to change password.'
                 ], 401);
             }
-
-        }catch(FFIException $e){
-           return response([
+        } catch (FFIException $e) {
+            return response([
                 'status'    => false,
                 'message'   => $e->getMessage()
-           ], 500);
+            ], 500);
         }
     }
 

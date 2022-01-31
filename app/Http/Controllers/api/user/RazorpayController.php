@@ -154,7 +154,7 @@ class RazorpayController extends Controller
                             $landlordEarning->date = date("Y-m-d", strtotime($this_due));
                             $landlordEarning->agreement_id = $agreement->id;
                             $landlordEarning->amount = $payment->paid;
-                            $landlordEarning->deal_id = $deal->id;
+                            $landlordEarning->deal_id = $deal->id ?? 0;
 
                             $landlordEarning->save();
                         } else {
@@ -165,7 +165,7 @@ class RazorpayController extends Controller
                             $iboEarning->date = date("Y-m-d", strtotime($this_due));
                             $iboEarning->agreement_id = $agreement->id;
                             $iboEarning->amount = $payment->paid;
-                            $iboEarning->deal_id = $deal->id;
+                            $iboEarning->deal_id = $deal->id ?? 0;
                         }
 
                         //notify user

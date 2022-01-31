@@ -61,7 +61,7 @@ class MeetingController extends Controller
                             ->where("tenant_id", $m->created_by_id)
                             ->where("landlord_id", $p->posted_by)
                             ->where("ibo_id", $m->user_id)->first();
-                        $m->is_tenant_vvc_verified = $vvcode->tenant_verified;
+                        $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? 0;
                         $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
                     }
 
@@ -183,36 +183,47 @@ class MeetingController extends Controller
         $history = [];
 
         foreach ($meetings as $m) {
-            if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
-                $p = Property::find($m->property_id);
-                $vvcode = null;
-                if ($user->role === 'ibo') {
-                    $vvcode = VvcCode::where("property_id", $p->id)
-                        ->where("tenant_id", $m->created_by_id)
-                        ->where("landlord_id", $p->posted_by)
-                        ->where("ibo_id", $m->user_id)->first();
-                    $m->is_tenant_vvc_verified = $vvcode->tenant_verified;
-                    $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
-                    $vvcode = $vvcode ? $vvcode->vvc_code : null;
-                }
-                if ($user->role === 'tenant') {
-                    $vvcode = VvcCode::where("property_id", $p->id)
-                        ->where("tenant_id", $m->created_by_id)
-                        ->where("landlord_id", $p->posted_by)
-                        ->where("ibo_id", $m->user_id)->first();
-                    $m->is_tenant_vvc_verified = $vvcode->tenant_verified;
-                    $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
-                }
-                if ($user->role === 'landlord') {
-                    $vvcode = VvcCode::where("property_id", $p->id)
-                        ->where("landlord_id", $p->posted_by)
-                        ->where("tenant_id", $m->created_by_id)
-                        ->where("ibo_id", $m->user_id)->first();
-                    $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
-                    $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
-                }
+            $p = Property::find($m->property_id);
+            $vvcode = null;
+            $u = User::find($m->user_id);
 
-                $m->vvc = $vvcode;
+            if ($user->role === 'ibo') {
+                $vvcode = VvcCode::where("property_id", $p->id)
+                    ->where("tenant_id", $m->created_by_id)
+                    ->where("landlord_id", $p->posted_by)
+                    ->where("ibo_id", $m->user_id)->first();
+                $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? 0;
+                $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
+                $vvcode = $vvcode ? $vvcode->vvc_code : null;
+            }
+            if ($user->role === 'tenant') {
+                $vvcode = VvcCode::where("property_id", $p->id)
+                    ->where("tenant_id", $m->created_by_id)
+                    ->where("landlord_id", $p->posted_by)
+                    ->where("ibo_id", $m->user_id)->first();
+                $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? 0;
+                $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+            }
+
+            $m->property_data = $p->name . ' - ' . $p->property_code;
+            $m->vvc = $vvcode;
+
+            if ($user->role === 'ibo') :
+                $m->property_monthly_rent = $p->monthly_rent;
+                $m->property_security_amount = $p->security_amount;
+                $m->property_asking_price = $p->offered_price;
+                $m->property_posted_by = $p->posted_by;
+                $m->landlord = User::select(['id', 'first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
+            endif;
+            if ($user->role === 'landlord') :
+                $m->ibo_id = $u->id;
+            endif;
+            $m->front_image = $p->front_image;
+            $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
+            $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
+            $m->agreement = $a;
+
+            if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
                 array_push($today, $m);
             }
             if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
@@ -269,7 +280,7 @@ class MeetingController extends Controller
                             ->where("landlord_id", $p->posted_by)
                             ->where("tenant_id", $m->created_by_id)
                             ->where("ibo_id", $m->user_id)->first();
-                        $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
+                        $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
                         $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
 
                         $m->property_data = $p->name . ' - ' . $p->property_code;
@@ -277,7 +288,7 @@ class MeetingController extends Controller
                         $m->property_security_amount = $p->security_amount;
                         $m->property_posted_by = $p->posted_by;
                         $m->front_image = $p->front_image;
-                        $m->ibo = $u->first . ' ' . $u->last;
+                        $m->ibo = $u ? $u->first . ' ' . $u->last : '';
                         $m->vvc = $vvcode;
                         $m->landlord = User::select(['first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
                         $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
@@ -368,15 +379,26 @@ class MeetingController extends Controller
                     $allm = Meeting::where("property_id", $p->id)->get();
 
                     foreach ($allm as $m) {
+                        $user = $landlord;
+                        $u = User::find($m->user_id);
+                        $vvcode = null;
+                        $vvcode = VvcCode::where("property_id", $p->id)
+                            ->where("landlord_id", $p->posted_by)
+                            ->where("tenant_id", $m->created_by_id)
+                            ->where("ibo_id", $m->user_id)->first();
+                        $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
+                        $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+                        $m->property_data = $p->name . ' - ' . $p->property_code;
+                        $m->vvc = $vvcode;
+                        if ($user->role === 'landlord') :
+                            $m->ibo_id = $u->id ?? 0;
+                        endif;
+                        $m->front_image = $p->front_image;
+                        $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
+                        $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
+                        $m->agreement = $a;
+
                         if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
-                            $vvcode = null;
-                            $vvcode = VvcCode::where("property_id", $p->id)
-                                ->where("landlord_id", $p->posted_by)
-                                ->where("tenant_id", $m->created_by_id)
-                                ->where("ibo_id", $m->user_id)->first();
-                            $m->is_landlord_vvc_verified = $vvcode->landlord_verified;
-                            $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
-                            $m->vvc = $vvcode;
                             array_push($today, $m);
                         }
                         if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {

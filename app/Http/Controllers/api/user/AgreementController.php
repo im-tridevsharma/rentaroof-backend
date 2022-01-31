@@ -97,10 +97,31 @@ class AgreementController extends Controller
         $agreement->start_date = $request->start_date;
         $agreement->end_date = $request->end_date;
         $agreement->next_due = $request->next_due;
-        $agreement->fee_percentage = $request->has('fee_percentage') ? $request->fee_percentage : '';
-        $agreement->fee_amount = $request->has('fee_amount') ? $request->fee_amount : '';
+        $agreement->fee_percentage = $request->has('fee_percentage') ? $request->fee_percentage : 0;
+        $agreement->fee_amount = $request->has('fee_amount') ? $request->fee_amount : 0.0;
         $agreement->number_of_invoices = 0;
         $agreement->security_amount = $request->has('security_amount') ? $request->security_amount : 0;
+
+        if (!User::find($agreement->landlord_id)) {
+            return response([
+                'status'   => false,
+                'message'  => 'Landlord not found!'
+            ], 422);
+        }
+
+        if (!User::find($agreement->ibo_id)) {
+            return response([
+                'status'   => false,
+                'message'  => 'IBO not found!'
+            ], 422);
+        }
+
+        if (!User::find($agreement->tenant_id)) {
+            return response([
+                'status'   => false,
+                'message'  => 'Tenant not found!'
+            ], 422);
+        }
 
         //create agreement and upload to server
         $url = $this->create_agreement($agreement);
