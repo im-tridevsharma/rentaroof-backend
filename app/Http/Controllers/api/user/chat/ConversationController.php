@@ -301,10 +301,9 @@ class ConversationController extends Controller
         ], 404);
     }
 
-    //send message 
+    //send message
     public function sendMessage(Request $request)
     {
-
         if (!$request->filled('message')) {
             return response([
                 'status'    => false,
@@ -361,7 +360,7 @@ class ConversationController extends Controller
         return response([
             'status'    => false,
             'message'   => 'Conversation not found.'
-        ], 422);
+        ], 404);
     }
 
     //users_for_conversation

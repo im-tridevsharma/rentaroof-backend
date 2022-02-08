@@ -192,6 +192,8 @@ class MeetingController extends Controller
                     ->where("tenant_id", $m->created_by_id)
                     ->where("landlord_id", $p->posted_by)
                     ->where("ibo_id", $m->user_id)->first();
+                $m->tenant_vvc = $vvcode->code_for_tenant ?? '';
+                $m->landlord_vvc = $vvcode->code_for_landlord ?? '';
                 $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? 0;
                 $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
                 $vvcode = $vvcode ? $vvcode->vvc_code : null;
@@ -410,6 +412,7 @@ class MeetingController extends Controller
                     }
                 }
             }
+
             return response([
                 'status'    => true,
                 'message'   => 'Meetings fetched successfully.',

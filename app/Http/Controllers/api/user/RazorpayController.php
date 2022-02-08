@@ -57,7 +57,7 @@ class RazorpayController extends Controller
             'currency'  => 'INR',
             'notes'     => [
                 'type'  => $request->type,
-                'type_id'   => $request->type_id,
+                'type_id'   => intval($request->type_id),
                 'message'   => $request->filled('message') ? $request->message : ''
             ]
         ];
@@ -71,7 +71,7 @@ class RazorpayController extends Controller
                 $payment->pending = $order->amount_due / 100;
                 $payment->currency = 'INR';
                 $payment->type = $request->type;
-                $payment->type_id = $request->type_id;
+                $payment->type_id = intval($request->type_id);
                 $payment->order_number = $order->id;
                 $payment->user_id = $user->id;
                 $payment->user_name = $user->first . ' ' . $user->last;

@@ -72,13 +72,9 @@ Route::get('website/initials/{key}', [AdminSettingController::class, 'get']);
 
 Route::get("properties/top", [PropertyController::class, 'top_properties']);
 Route::get("properties/search", [PropertyController::class, 'search']);
-Route::get("properties/for_verification", [PropertyController::class, 'for_verification'])->middleware('jwt.verify');
-Route::post("properties/change_verification_status/{id}", [PropertyController::class, 'change_verification_status'])->middleware('jwt.verify');
-Route::post("properties/accept_or_reject_verification/{id}", [PropertyController::class, 'accept_or_reject_verification'])->middleware('jwt.verify');
 Route::get("properties/search_by_coords", [PropertyController::class, 'search_by_coords']);
 Route::get("properties/similar/{code}/{limit}", [PropertyController::class, 'get_similar_properties']);
 Route::get("properties/code/{id}", [PropertyController::class, 'code']);
-Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
 Route::get("properties/reviews/all/{id}", [RatingandReviewController::class, 'all']);
 Route::resource("properties/reviews", RatingandReviewController::class);
 
@@ -86,38 +82,6 @@ Route::get('ibo/properties_by_type', [PropertyController::class, 'ibo_properties
 Route::get('landlord/properties_by_type', [PropertyController::class, 'landlord_properties_by_type']);
 Route::get("properties/ibo/{id}", [PropertyController::class, 'property_by_user']);
 Route::get("properties/landlord/{id}", [PropertyController::class, 'property_by_user']);
-
-Route::get('earnings/ibo', [UserController::class, 'get_ibo_earnings']);
-Route::get('earnings/ibo/cards', [UserController::class, 'income_cards']);
-Route::get('earnings/ibo/deals', [UserController::class, 'ibo_deals_earning']);
-Route::get('earnings/ibo/for_year', [UserController::class, 'earning_for_year']);
-
-Route::get('earnings/landlord', [UserController::class, 'get_landlord_earnings']);
-Route::get('earnings/landlord/cards', [UserController::class, 'landlord_income_cards']);
-Route::get('earnings/landlord/deals', [UserController::class, 'landlord_deals_earning']);
-Route::get('earnings/landlord/for_year', [UserController::class, 'landlord_earning_for_year']);
-
-Route::get('ratings/ibo/all/{id}', [IboRatingController::class, 'all']);
-Route::resource('ratings/ibo', IboRatingController::class);
-Route::get('ibo/notifications/unseen', [IboNotificationController::class, 'unseenNotification']);
-Route::get("ibo/notifications/seen/{id}", [IboNotificationController::class, 'seen']);
-Route::resource('ibo/notifications', IboNotificationController::class);
-
-Route::get('ratings/landlord/all/{id}', [LandlordRatingController::class, 'all']);
-Route::resource('ratings/landlord', LandlordRatingController::class);
-Route::get('landlord/notifications/unseen', [LandlordNotificationController::class, 'unseenNotification']);
-Route::get("landlord/notifications/seen/{id}", [LandlordNotificationController::class, 'seen']);
-Route::resource('landlord/notifications', LandlordNotificationController::class);
-
-Route::get('tenant/notifications/unseen', [TenantNotificationController::class, 'unseenNotification']);
-Route::get("tenant/notifications/seen/{id}", [TenantNotificationController::class, 'seen']);
-Route::resource('tenant/notifications', TenantNotificationController::class);
-Route::get('ratings/tenant/all/{id}', [TenantRatingController::class, 'all']);
-Route::resource('ratings/tenant', TenantRatingController::class);
-Route::get('users/referrals', [ReferralPointController::class, 'getReferrals']);
-
-Route::get('tenant/upcoming_payments', [AgreementController::class, 'upcoming_payments']);
-Route::resource('agreements', AgreementController::class);
 
 Route::get("countries", function () {
     return response([
@@ -169,10 +133,48 @@ Route::get("preferences", function () {
     ]);
 });
 
+
+Route::resource('ibo/notifications', IboNotificationController::class);
+Route::resource('landlord/notifications', LandlordNotificationController::class);
+Route::resource('tenant/notifications', TenantNotificationController::class);
+
 //store and login
 Route::post('/store_and_login', [PropertyController::class, 'storeAndLogin']);
 
 Route::group(['middleware' => 'jwt.verify'], function () {
+    Route::get("properties/for_verification", [PropertyController::class, 'for_verification'])->middleware('jwt.verify');
+    Route::post("properties/change_verification_status/{id}", [PropertyController::class, 'change_verification_status'])->middleware('jwt.verify');
+    Route::post("properties/accept_or_reject_verification/{id}", [PropertyController::class, 'accept_or_reject_verification'])->middleware('jwt.verify');
+
+    Route::get('earnings/ibo', [UserController::class, 'get_ibo_earnings']);
+    Route::get('earnings/ibo/cards', [UserController::class, 'income_cards']);
+    Route::get('earnings/ibo/deals', [UserController::class, 'ibo_deals_earning']);
+    Route::get('earnings/ibo/for_year', [UserController::class, 'earning_for_year']);
+
+    Route::get('earnings/landlord', [UserController::class, 'get_landlord_earnings']);
+    Route::get('earnings/landlord/cards', [UserController::class, 'landlord_income_cards']);
+    Route::get('earnings/landlord/deals', [UserController::class, 'landlord_deals_earning']);
+    Route::get('earnings/landlord/for_year', [UserController::class, 'landlord_earning_for_year']);
+
+    Route::get('ratings/ibo/all/{id}', [IboRatingController::class, 'all']);
+    Route::resource('ratings/ibo', IboRatingController::class);
+    Route::get('ibo/notifications/unseen', [IboNotificationController::class, 'unseenNotification']);
+    Route::get("ibo/notifications/seen/{id}", [IboNotificationController::class, 'seen']);
+
+    Route::get('ratings/landlord/all/{id}', [LandlordRatingController::class, 'all']);
+    Route::resource('ratings/landlord', LandlordRatingController::class);
+    Route::get('landlord/notifications/unseen', [LandlordNotificationController::class, 'unseenNotification']);
+    Route::get("landlord/notifications/seen/{id}", [LandlordNotificationController::class, 'seen']);
+
+    Route::get('tenant/notifications/unseen', [TenantNotificationController::class, 'unseenNotification']);
+    Route::get("tenant/notifications/seen/{id}", [TenantNotificationController::class, 'seen']);
+    Route::get('ratings/tenant/all/{id}', [TenantRatingController::class, 'all']);
+    Route::resource('ratings/tenant', TenantRatingController::class);
+    Route::get('users/referrals', [ReferralPointController::class, 'getReferrals']);
+    Route::get('tenant/upcoming_payments', [AgreementController::class, 'upcoming_payments']);
+    Route::resource('agreements', AgreementController::class);
+
+
     //payment
     Route::post('payment/order', [RazorpayController::class, 'createOrder']);
     Route::post('payment/success', [RazorpayController::class, 'successPayment']);
@@ -180,6 +182,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::get('payment/recent', [RazorpayController::class, 'getRecentTransactions']);
     Route::get('properties/rent/transactions/{code}', [RazorpayController::class, 'getPropertyRentTxn']);
 
+    Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
 
     //wallet
     Route::get('users/wallet', [WalletController::class, 'getWallet']);

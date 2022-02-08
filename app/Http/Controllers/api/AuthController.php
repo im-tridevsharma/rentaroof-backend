@@ -169,7 +169,7 @@ class AuthController extends Controller
             }
         }
 
-        if ($request->filled('remember_me') && $request->remember_me === 'yes') {
+        if ($request->filled('remember_me') && ($request->remember_me === 'yes' || $request->remember_me)) {
             JWTAuth::factory()->setTTL(60 * 24 * 356);
         }
 
@@ -191,6 +191,8 @@ class AuthController extends Controller
                 $is_property_updated = true;
             }
         }
+
+        $user->device_token = $request->device_token ?? '';
 
         $user->save();
         $info = [

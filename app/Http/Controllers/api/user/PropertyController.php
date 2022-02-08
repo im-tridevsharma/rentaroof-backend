@@ -252,6 +252,13 @@ class PropertyController extends Controller
             ], 400);
         }
 
+        if (JWTAuth::user() && empty(JWTAuth::user()->role)) {
+            return response([
+                'status'    => false,
+                'message'   => 'Your account is not well set.',
+            ], 400);
+        }
+
         $property = Property::find($id);
         if ($property) {
 
@@ -316,12 +323,11 @@ class PropertyController extends Controller
                 ->select("user_id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
                 + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
-                ->having('distance', '<', 50)
+                ->having('distance', '<', 2111550)
                 ->orderBy('distance', 'asc')->distinct()
                 ->where("user_id", "!=", NULL)->get();
 
             $createid = 'ID-' . time();
-            $assigned = false;
 
             if (count($ibos) > 0) {
                 if ($property_owner && $property_owner->role !== 'ibo') {
@@ -347,7 +353,6 @@ class PropertyController extends Controller
                             $meeting->meeting_history = json_encode([]);
 
                             $meeting->save();
-                            $assigned = true;
 
                             //send notification to ibo for appointment request
                             $ibo_notify = new IboNotification;
@@ -361,14 +366,12 @@ class PropertyController extends Controller
                             $ibo_notify->save();
 
                             event(new NotificationSent($ibo_notify));
-                        } else {
-                            $assigned = false;
                         }
                     }
                 } else {
                     return response([
                         'status'    => false,
-                        'message'   => 'Sorry! Executives are not available right now.',
+                        'message'   => 'Sorry! Executives are not available right now. We will contact you soon.',
                     ], 400);
                 }
             } else {
@@ -378,7 +381,7 @@ class PropertyController extends Controller
                 ], 400);
             }
 
-            if ($assigned && (count($ibos) > 0 || $property_owner->role === 'ibo')) {
+            if ((count($ibos) > 0 || $property_owner->role === 'ibo')) {
                 //notify admin
                 $an = new AdminNotification;
                 $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
@@ -422,7 +425,7 @@ class PropertyController extends Controller
             } else {
                 return response([
                     'status'    => false,
-                    'message'   => 'Sorry! Executives are not available right now.',
+                    'message'   => 'Opps! Something went wrong.',
                 ], 400);
             }
         }
