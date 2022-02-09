@@ -9,4 +9,13 @@ class TenantNotification extends Model
 {
     use HasFactory;
     protected $guarded = ['id', 'created_at', 'updated_at'];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(function ($tenant_notification) {
+            push_notification($tenant_notification);
+        });
+    }
 }
