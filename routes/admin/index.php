@@ -120,6 +120,7 @@ Route::resource('amenities', AmenityManagement::class)->middleware('admin');
 //manage preferences
 Route::resource('preferences', PreferenceManagement::class)->middleware('admin');
 //manage properties
+Route::post('properties/bulk_action', [PropertyManagement::class, 'bulk_action'])->middleware('admin');
 Route::post('properties/verification/{id}', [PropertyManagement::class, 'verification'])->middleware('admin');
 Route::get('properties/reject_delete_request/{id}', [PropertyManagement::class, 'reject_delete_request'])->middleware('admin');
 Route::post('properties/assign_verification', [PropertyManagement::class, 'assign_verification'])->middleware('admin');
@@ -153,6 +154,6 @@ Route::post('settings', [SettingController::class, 'save_and_update'])->middlewa
 Route::post('settings/bulk', [SettingController::class, 'save_bulk'])->middleware('admin');
 Route::get('settings/{key}', [SettingController::class, 'get'])->middleware('admin');
 
-//complains 
+//complains
 Route::post('complains/status/{id}', [ComplainManagement::class, 'status'])->middleware('admin');
 Route::resource('complains', ComplainManagement::class)->middleware('admin');

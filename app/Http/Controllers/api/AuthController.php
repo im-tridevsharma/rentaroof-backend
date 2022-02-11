@@ -4,6 +4,7 @@ namespace App\Http\Controllers\api;
 
 
 use App\Http\Controllers\Controller;
+use App\Models\Meeting;
 use App\Models\OTPVerification;
 use App\Models\Property;
 use Illuminate\Http\Request;
@@ -762,5 +763,36 @@ class AuthController extends Controller
             true,
             false
         );
+    }
+
+    public function isSOS()
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc");
+            if ($user && $user->role === 'tenant') {
+                $meetings->where("meeting_status", '!=', 'pending');
+                $meetings->where("user_id", '!=', 0);
+            }
+
+            $meetings = $meetings->get();
+            $today = 0;
+
+            foreach ($meetings as $m) {
+                if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                    $today++;
+                }
+            }
+
+            return response([
+                'status'    => true,
+                'data'  => $today > 0 ? 'yes' : 'no'
+            ], 200);
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'User not found'
+            ], 401);
+        }
     }
 }

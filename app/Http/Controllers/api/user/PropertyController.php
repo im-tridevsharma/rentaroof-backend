@@ -280,7 +280,7 @@ class PropertyController extends Controller
 
             //Check property owner
             $property_owner = User::find($property->posted_by);
-            if ($property_owner->role == 'ibo') {
+            if ($property_owner->role == 'ibo' && $property_owner->ibo_duty_mode === 'online') {
                 $meeting = new  Meeting;
                 $meeting->create_id = time();
                 $meeting->title = 'Property visit request';
@@ -313,6 +313,11 @@ class PropertyController extends Controller
                 $ibo_notify->save();
 
                 event(new NotificationSent($ibo_notify));
+            } else {
+                DB::table('payment_splits')->insert([
+                    'property_id'   => $property->id,
+                    'ibo_id'        => $property_owner->id,
+                ]);
             }
 
             $address = Address::find($property->address_id);
@@ -330,7 +335,7 @@ class PropertyController extends Controller
             $createid = 'ID-' . time();
 
             if (count($ibos) > 0) {
-                if ($property_owner && $property_owner->role !== 'ibo') {
+                if ($property_owner && ($property_owner->role !== 'ibo' || $property_owner->ibo_duty_mode !== 'online')) {
                     foreach ($ibos as $ibo) {
                         $user = User::where("role", "ibo")->where("id", $ibo->user_id)->first();
                         if ($user) {
@@ -375,9 +380,29 @@ class PropertyController extends Controller
                     ], 400);
                 }
             } else {
+                $meeting = new  Meeting;
+                $meeting->create_id = time();
+                $meeting->title = 'Property visit request';
+                $meeting->description = 'Visit for property ' . $property->property_code;
+                $meeting->user_id = null;
+                $meeting->user_role = '';
+                $meeting->property_id = $property->id;
+                $meeting->name = $request->name;
+                $meeting->contact = $request->contact;
+                $meeting->email = $request->email;
+                $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : NULL;
+                $meeting->end_time_expected = NULL;
+                $meeting->end_time = NULL;
+                $meeting->created_by_name = $request->name;
+                $meeting->created_by_role = JWTAuth::user() ? JWTAuth::user()->role : 'guest';
+                $meeting->created_by_id = JWTAuth::user() ? JWTAuth::user()->id : NULL;
+                $meeting->meeting_history = json_encode([]);
+
+                $meeting->save();
+
                 return response([
                     'status'    => false,
-                    'message'   => 'Sorry! Executives are not available right now.',
+                    'message'   => 'Appointment has been scheduled! Executives are not available near this property, we will be in touch with you asap.',
                 ], 400);
             }
 
@@ -527,8 +552,8 @@ class PropertyController extends Controller
 
             if ($request->has('budget') && !empty($request->budget)) {
                 $price = explode("-", $request->budget);
-                $min_price = floatval($price[0]);
-                $max_price = floatval($price[1]);
+                $min_price = floatval($price[0] ?? 1000);
+                $max_price = floatval($price[1] ?? 20000);
 
                 $q->where("monthly_rent", ">=", $min_price);
                 $q->where("monthly_rent", "<=", $max_price);
@@ -868,7 +893,7 @@ class PropertyController extends Controller
             $property->amenities_data = $amenities_data;
             $property->preferences_data = $preferences_data;
 
-            $property->posted_by_data = User::find($property->posted_by)->load("address");
+            $property->posted_by_data = User::find($property->posted_by) ? User::find($property->posted_by)->load("address") : [];
 
             return response([
                 'status'    => true,
@@ -1867,5 +1892,24 @@ class PropertyController extends Controller
                 'message'   => $e,
             ], 500);
         }
+    }
+
+    //get featured properties
+    public function getFeaturedProperties()
+    {
+        $ids = DB::table('featured_properties')->pluck('property_id')->toArray();
+        $properties = Property::where('is_approved', 1)
+            ->where('is_closed', 0)->where('is_deleted', 0)
+            ->whereIn('id', $ids)->get([
+                'id', 'name', 'property_code', 'front_image',
+                'posted_by', 'type', 'monthly_rent', 'available_immediately',
+                'city_name', 'state_name', 'carpet_area', 'carpet_area_unit'
+            ]);
+
+        return response([
+            'status' => true,
+            'message'   => 'properties fetched successfully.',
+            'data'  => $properties
+        ], 200);
     }
 }

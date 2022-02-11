@@ -24,12 +24,21 @@ class PropertyManagement extends Controller
      */
     public function index()
     {
-        $properties = Property::all();
+        $properties = Property::all([
+            'id', 'name', 'property_code', 'type', 'posted_by', 'is_approved',
+            'is_deleted', 'is_closed'
+        ]);
 
         return response([
             'status'    => true,
             'message'   => 'properties fetched successfully.',
-            'data'      => $properties
+            'data'      => $properties->map(function ($p) {
+                $user = User::find($p->posted_by);
+                $p->owner = $user ? $user->first . ' ' . $user->last : '-';
+                $is_featured = DB::table('featured_properties')->where("property_id", $p->id)->count();
+                $p->is_featured = $is_featured ? 1 : 0;
+                return $p;
+            })
         ], 200);
     }
 
@@ -299,6 +308,63 @@ class PropertyManagement extends Controller
                     Storage::disk('digitalocean')->delete($dir . basename($file));
                 }
             }
+        }
+    }
+
+
+    //bulk action
+    public function bulk_action(Request $request)
+    {
+        if ($request->has('action') && $request->has('ids')) {
+            if (is_array($request->ids)) {
+                foreach ($request->ids as $id) {
+                    switch ($request->action) {
+                        case 'mark-featured':
+                            $exist = DB::table('featured_properties')->where("property_id", $id)
+                                ->count();
+                            if (!$exist) {
+                                DB::table('featured_properties')->insert(['property_id' => $id]);
+                            }
+                            break;
+                        case 'mark-not-featured':
+                            $exist = DB::table('featured_properties')->where("property_id", $id)
+                                ->delete();
+                            break;
+                        case 'mark-verified':
+                            $property = Property::find($id);
+                            if ($property) {
+                                $property->is_approved = 1;
+                                $property->save();
+                            }
+                            break;
+                        case 'mark-not-verified':
+                            $property = Property::find($id);
+                            if ($property) {
+                                $property->is_approved = 0;
+                                $property->save();
+                            }
+                            break;
+                        case 'remove':
+                            $res = $this->destroy($id);
+                            break;
+                        default:
+                            return response([
+                                'status' => false,
+                                'message'   => 'Action not matched.'
+                            ], 404);
+                    }
+                }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Action performed successfully.'
+                ], 200);
+            }
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Please select properties to perform actions.'
+            ], 422);
         }
     }
 }
