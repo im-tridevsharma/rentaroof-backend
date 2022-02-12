@@ -36,7 +36,7 @@ class TenantNotificationController extends Controller
         ], 401);
     }
 
-    //return count of unseen notification 
+    //return count of unseen notification
     public function unseenNotification()
     {
         $user = JWTAuth::user();

@@ -335,7 +335,7 @@ class PropertyController extends Controller
             $createid = 'ID-' . time();
 
             if (count($ibos) > 0) {
-                if ($property_owner && ($property_owner->role !== 'ibo' || $property_owner->ibo_duty_mode !== 'online')) {
+                if ($property_owner && ($property_owner->role !== 'ibo')) {
                     foreach ($ibos as $ibo) {
                         $user = User::where("role", "ibo")->where("id", $ibo->user_id)->first();
                         if ($user) {
@@ -373,11 +373,6 @@ class PropertyController extends Controller
                             event(new NotificationSent($ibo_notify));
                         }
                     }
-                } else {
-                    return response([
-                        'status'    => false,
-                        'message'   => 'Sorry! Executives are not available right now. We will contact you soon.',
-                    ], 400);
                 }
             } else {
                 $meeting = new  Meeting;

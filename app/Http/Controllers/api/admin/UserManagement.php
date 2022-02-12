@@ -36,18 +36,18 @@ class UserManagement extends Controller
     //users_for_tracking
     public function users_for_tracking()
     {
-        $users = User::select(['id','first','last','profile_pic','email','mobile','address_id','system_userid','role','is_logged_in'])->where("account_status", "activated")->get()->map(function($q){
+        $users = User::select(['id', 'first', 'last', 'profile_pic', 'email', 'mobile', 'address_id', 'system_userid', 'role', 'is_logged_in'])->where("account_status", "activated")->get()->map(function ($q) {
             $address = Address::find($q->address_id);
-            if($address){
+            if ($address) {
                 $uaddr = [
                     "full_address" => $address->full_address ?? '',
                     "lat"          => $address->lat ?? 0,
                     "long"         => $address->long ?? 0,
-                    "country"      => Country::find($address->country)->name ?? '', 
-                    "state"        => Country::find($address->state)->name ?? '', 
+                    "country"      => Country::find($address->country)->name ?? '',
+                    "state"        => Country::find($address->state)->name ?? '',
                     "city"         => Country::find($address->city)->name ?? '',
                 ];
-    
+
                 $q->address = $uaddr;
             }
             return $q;
@@ -213,7 +213,7 @@ class UserManagement extends Controller
             return response([
                 'status'  => true,
                 'message' => 'User fetched successfully.',
-                'data'    => Crypt::encryptString($user->load('address'))
+                'data'    => Crypt::encryptString($user->load('address', 'kyc'))
             ], 200);
         }
 

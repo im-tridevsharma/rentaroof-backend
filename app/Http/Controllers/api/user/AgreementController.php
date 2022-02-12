@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
 use App\Models\Agreement;
 use App\Models\IboNotification;
+use App\Models\KycVerification;
 use App\Models\Property;
 use App\Models\TenantNotification;
 use App\Models\User;
@@ -82,6 +83,87 @@ class AgreementController extends Controller
                 'message'   => 'Some errors occured.',
                 'error'     => $validator->errors()
             ], 400);
+        }
+
+        //check for kyc verification for tenant and landlord as well
+        $tenant = User::find($request->tenant_id);
+        if ($tenant) {
+            if ($tenant->kyc_id) {
+                $tkyc = KycVerification::find($tenant->kyc_id);
+                if ($tkyc && $tkyc->is_verified) {
+                    //nothing to do kyc is verified
+                    if (!$tenant->signature) {
+                        $user_notify = new TenantNotification;
+                        $user_notify->tenant_id = $tenant->id;
+                        $user_notify->type = 'Urgent';
+                        $user_notify->title = 'Signature Alert!';
+                        $user_notify->content = 'Please upload your Signature details to get agreement done.';
+                        $user_notify->name = 'Rent A Roof';
+                        $user_notify->redirect = '/tenant/profile';
+                        $user_notify->save();
+                        event(new NotificationSent($user_notify));
+                        return response([
+                            'status'    => false,
+                            'message'   => 'Tenant has not uploaded signature yet. Notification sent to him.'
+                        ], 400);
+                    }
+                } else {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'Tenant Kyc is not verified yet. Contact to your IBO.'
+                    ], 400);
+                }
+            } else {
+                $user_notify = new TenantNotification;
+                $user_notify->tenant_id = $tenant->id;
+                $user_notify->type = 'Urgent';
+                $user_notify->title = 'KYC Alert!';
+                $user_notify->content = 'Please upload your KYC details to get agreement done.';
+                $user_notify->name = 'Rent A Roof';
+                $user_notify->redirect = '/tenant/kyc';
+                $user_notify->save();
+                event(new NotificationSent($user_notify));
+                return response([
+                    'status'    => false,
+                    'message'   => 'Tenant has not uploaded KYC details yet. Notification sent to him.'
+                ], 400);
+            }
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Tenant not found.'
+            ], 404);
+        }
+
+        $landlord = User::find($request->landlord_id);
+        if ($landlord) {
+            if ($landlord->kyc_id) {
+                $lkyc = KycVerification::find($landlord->kyc_id);
+                if ($lkyc && $lkyc->is_verified) {
+                    //nothing to do kyc is verified
+                    if (!$landlord->signature) {
+                        return response([
+                            'status'    => false,
+                            'message'   => 'You have not uploaded signature yet. Please upload it first.'
+                        ], 400);
+                    }
+                } else {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'Your Kyc is not verified yet.'
+                    ], 400);
+                }
+            } else {
+                return response([
+                    'status'    => false,
+                    'message'   => 'You have not uploaded KYC details yet. Plesae upload it first.'
+                ], 400);
+            }
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Landlord not found.'
+            ], 404);
         }
 
         $agreement = new Agreement;
@@ -199,7 +281,11 @@ class AgreementController extends Controller
                 $template = str_replace("[[LANDLORD_EMAIL]]", $landlord->email, $template);
                 $template = str_replace("[[LANDLORD_MOBILE]]", $landlord->mobile, $template);
                 if (!empty($tenant->signature)) {
-                    $template = str_replace("[[LANDLORD_SIGNATURE]]", '<img src="' . $this->base64($landlord->signature) . 'width="100" height="100"/>', $template);
+                    $template = str_replace("[[LANDLORD_SIGNATURE]]", '<div style="width:300px;height:120px;
+                background-position:center;background-size:cover;
+                background-repeat:no-repeat;
+                    background-image:url(' . $landlord->signature . ');background-color:white;">
+                </div>', $template);
                 }
                 $template = str_replace("[[LANDLORD_FULL_ADDRESS]]", $landlord->address ? $landlord->address->full_address : '', $template);
             }
@@ -220,7 +306,11 @@ class AgreementController extends Controller
                 $template = str_replace("[[TENANT_MOBILE]]", $tenant->email, $template);
                 $template = str_replace("[[TENANT_EMAIL]]", $tenant->mobile, $template);
                 if (!empty($tenant->signature)) {
-                    $template = str_replace("[[TENANT_SIGNATURE]]", '<img src="' . $this->base64($tenant->signature) . 'width="100" height="100"/>', $template);
+                    $template = str_replace("[[TENANT_SIGNATURE]]", '<div style="width:300px;height:120px;
+                background-position:center;background-size:cover;
+                background-repeat:no-repeat;
+                    background-image:url(' . $tenant->signature . ');background-color:white;">
+                </div>', $template);
                 }
                 $template = str_replace("[[TENANT_FULL_ADDRESS]]", $tenant->address ? $tenant->address->full_address : '', $template);
             }
@@ -232,8 +322,8 @@ class AgreementController extends Controller
                 $template = str_replace("[[SECURITY_DEPOSIT]]", $property->security_amount, $template);
             }
 
-            $to = \Carbon\Carbon::createFromFormat('Y-m-d', $agreement->end_date);
-            $from = \Carbon\Carbon::createFromFormat('Y-m-d', $agreement->start_date);
+            $to = \Carbon\Carbon::parse($agreement->end_date);
+            $from = \Carbon\Carbon::parse($agreement->start_date);
             $diff_in_months = $to->diffInMonths($from);
 
             $template = str_replace("[[CONTRACT_DURATION]]", $diff_in_months . ' Months', $template);
@@ -252,20 +342,44 @@ class AgreementController extends Controller
             }
 
             return $url;
-            return "success";
         }
 
         return '';
     }
 
-    //getbase64
-    public function base64($url)
+    //police verification
+    public function police_verification($id)
     {
-        $image = file_get_contents($url);
-        if ($image !== false) {
-            return 'data:image/jpg;base64,' . base64_encode($image);
+        $agreement = Agreement::find($id);
+        if ($agreement) {
+            $pdf = App::make('dompdf.wrapper',);
+
+            //generate dynamic contents
+            $landlord = User::find($agreement->landlord_id)->load("address");
+            $lkyc = KycVerification::find($landlord->kyc_id);
+            $tenant = User::find($agreement->tenant_id)->load("address");
+            $tkyc = KycVerification::find($tenant->kyc_id);
+
+            $pdf->loadView('police-verification', compact('landlord', 'lkyc', 'tenant', 'tkyc'))
+                ->save(public_path('temp/temp.pdf'));
+
+            $upload_dir = '/uploads/police-verification';
+            $name = Storage::disk('digitalocean')->put($upload_dir, new File(public_path('temp/temp.pdf')), 'public');
+            $url = Storage::disk('digitalocean')->url($name);
+
+            if (file_exists(public_path('temp/temp.pdf'))) {
+                unlink(public_path('temp/temp.pdf'));
+            }
+
+            $agreement->police_verification = $url;
+            $agreement->save();
+
+            return $url;
+        } else {
+            return false;
         }
     }
+
 
     /**
      * Display the specified resource.

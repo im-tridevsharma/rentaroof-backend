@@ -174,6 +174,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::resource('ratings/tenant', TenantRatingController::class);
     Route::get('users/referrals', [ReferralPointController::class, 'getReferrals']);
     Route::get('tenant/upcoming_payments', [AgreementController::class, 'upcoming_payments']);
+    Route::get('police-verification/{id}', [AgreementController::class, 'police_verification']);
     Route::resource('agreements', AgreementController::class);
 
 
