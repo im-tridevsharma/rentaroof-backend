@@ -566,4 +566,77 @@ class UserController extends Controller
             'data'      => $years
         ], 200);
     }
+
+    //create a landlord
+    public function newLandlord(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'name'  => 'required',
+            'email' => 'required|email',
+            'mobile' => 'required',
+            'password' => 'required|min:6|max:20'
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'The given input was invalid.',
+                'error'     => $validator->errors()
+            ], 400);
+        }
+
+        $is = User::orWhere("email", $request->email)->orWhere("mobile", $request->mobile)->count();
+        if ($is) {
+            return response([
+                'status'    => false,
+                'message'   => 'Already used email or mobile.'
+            ], 200);
+        }
+
+        //register new landlord
+
+        $landlord = new User;
+        $landlord->system_userid = 'LID-0' . rand(11111, 99999);
+        $landlord->referral_code = JWTAuth::user()->system_userid;
+        $landlord->role = 'landlord';
+        $name = explode(' ', $request->name);
+        $landlord->first = $name[0] ?? '';
+        $landlord->last = $name[1] ?? '';
+        $landlord->email = $request->email ?? '';
+        $landlord->mobile = $request->mobile ?? '';
+        $landlord->account_status = 'not-verified';
+        $landlord->password = $request->password ? Hash::make($request->password) : '';
+
+        $landlord->save();
+
+        $link = url('/verify-email/' . base64_encode($landlord->system_userid));
+        $link2 = url('/verify-mobile/' . base64_encode($landlord->system_userid));
+        //send verification email
+        $email_data = '<h2>Verify Your Email</h2>
+        <p>Click on below link to verify.</p>
+        <a herf="' . $link . '">' . $link . '<a>
+        ';
+        send_email($landlord->email, $email_data);
+
+        //send verification sms
+        sms('Click to verify - ' . $link2, $request->mobile);
+
+        return response([
+            'status'    => true,
+            'message'   => 'Landlord added successfully.'
+        ]);
+    }
+
+    //getLandlords
+    public function getLandlords()
+    {
+        $user = JWTAuth::user();
+        $landlords = User::where("role", "landlord")->orderBy("id", "desc")
+            ->where("referral_code", $user->system_userid)->get(['id', 'first', 'last']);
+        return response([
+            'status'    => true,
+            'message'   => 'Landlords fetched successfully.',
+            'data'      => $landlords
+        ], 200);
+    }
 }

@@ -143,6 +143,8 @@ Route::resource('tenant/notifications', TenantNotificationController::class);
 Route::post('/store_and_login', [PropertyController::class, 'storeAndLogin']);
 
 Route::group(['middleware' => 'jwt.verify'], function () {
+    Route::get('/get-my-landlords', [UserController::class, 'getLandlords']);
+    Route::post('register-new-landlord', [UserController::class, 'newLandlord']);
     Route::get('is-sos', [AuthController::class, 'isSOS']);
     Route::get("properties/for_verification", [PropertyController::class, 'for_verification'])->middleware('jwt.verify');
     Route::post("properties/change_verification_status/{id}", [PropertyController::class, 'change_verification_status'])->middleware('jwt.verify');

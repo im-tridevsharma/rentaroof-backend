@@ -17,3 +17,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return time();
 });
+
+Route::get('verify-email/{id}', function ($id) {
+    return $id;
+});
+
+Route::get('verify-mobile/{id}', function ($id) {
+    return $id;
+});

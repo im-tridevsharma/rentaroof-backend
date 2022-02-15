@@ -742,7 +742,13 @@ class PropertyController extends Controller
         $property = new Property($request->input());
 
         $property->property_code = 'RARP-0' . rand(11111, 99999) . '0';
-
+        if (JWTAuth::user()->role === 'ibo') {
+            $property->ibo = JWTAuth::user()->id;
+            $property->landlord  = $request->landlord ?? 0;
+            $property->posted_by = $request->landlord ?? JWTAuth::user()->id;
+        } else {
+            $property->posted_by = JWTAuth::user()->id;
+        }
         if (isset($request->custom_bedrooms) && !empty($request->custom_bedrooms)) {
             $property->bedrooms = $request->custom_bedrooms;
         }
@@ -790,7 +796,6 @@ class PropertyController extends Controller
         $property->advance_amount_period = $request->advance_amount_period ?? '';
 
         $property->front_image = '';
-        $property->posted_by = JWTAuth::user()->id;
 
         if (JWTAuth::user() && JWTAuth::user()->role === 'landlord') {
             $property->landlord = JWTAuth::user()->id;

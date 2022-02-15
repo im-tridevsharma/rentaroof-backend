@@ -87,6 +87,30 @@ if (!function_exists('send_email_otp')) {
     }
 }
 
+
+if (!function_exists('send_email')) {
+    function send_email($to, $data)
+    {
+        if ($to && $data) {
+            $mail = phpmailer();
+
+            try {
+                //Recipients
+                $mail->setFrom(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
+                $mail->addAddress($to);     //Add a recipient
+                //Content
+                $mail->isHTML(true);                                  //Set email format to HTML
+                $mail->Subject = 'Email Verification - Rent a Roof';
+                $mail->Body    = $data;
+                $mail->send();
+                return 1;
+            } catch (Exception $e) {
+                return "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+            }
+        }
+    }
+}
+
 if (!function_exists('phpmailer')) {
     function phpmailer()
     {
