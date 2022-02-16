@@ -40,7 +40,16 @@ class PropertyController extends Controller
      */
     public function index()
     {
-        $properties = Property::where("posted_by", JWTAuth::user()->id)->get();
+        $user = JWTAuth::user();
+        if ($user->role !== 'ibo') {
+            $properties = Property::where("posted_by", $user->id)->get();
+        } else {
+            $properties = Property::where("ibo", $user->id)->get()->map(function ($q) {
+                $owner = User::find($q->landlord);
+                $q->owner = $owner ? $owner->first . ' ' . $owner->last : '';
+                return $q;
+            });
+        }
         if ($properties) {
             return response([
                 'status'    => true,
@@ -279,14 +288,14 @@ class PropertyController extends Controller
             }
 
             //Check property owner
-            $property_owner = User::find($property->posted_by);
-            if ($property_owner->role == 'ibo' && $property_owner->ibo_duty_mode === 'online') {
+            $ibo = User::find($property->ibo);
+            if ($property->ibo && $ibo->ibo_duty_mode === 'online') {
                 $meeting = new  Meeting;
                 $meeting->create_id = time();
                 $meeting->title = 'Property visit request';
                 $meeting->description = 'Visit for property ' . $property->property_code;
-                $meeting->user_id = $property_owner->id;
-                $meeting->user_role = $property_owner->role;
+                $meeting->user_id = $ibo->id;
+                $meeting->user_role = $ibo->role;
                 $meeting->property_id = $property->id;
                 $meeting->name = $request->name;
                 $meeting->contact = $request->contact;
@@ -303,7 +312,7 @@ class PropertyController extends Controller
 
                 //send notification to ibo for appointment request
                 $ibo_notify = new IboNotification;
-                $ibo_notify->ibo_id = $property_owner->id;
+                $ibo_notify->ibo_id = $ibo->id;
                 $ibo_notify->type = 'Urgent';
                 $ibo_notify->title = 'You have new appointment.';
                 $ibo_notify->content = 'You have new appointment for property - ' . $property->property_code . '. Scheduled at ' . date('d-m-Y H:i', strtotime($meeting->start_time));
@@ -316,7 +325,7 @@ class PropertyController extends Controller
             } else {
                 DB::table('payment_splits')->insert([
                     'property_id'   => $property->id,
-                    'ibo_id'        => $property_owner->id,
+                    'ibo_id'        => $ibo->id,
                 ]);
             }
 
@@ -335,7 +344,7 @@ class PropertyController extends Controller
             $createid = 'ID-' . time();
 
             if (count($ibos) > 0) {
-                if ($property_owner && ($property_owner->role !== 'ibo')) {
+                if ($ibo && ($ibo->role !== 'ibo')) {
                     foreach ($ibos as $ibo) {
                         $user = User::where("role", "ibo")->where("id", $ibo->user_id)->first();
                         if ($user) {
@@ -401,7 +410,7 @@ class PropertyController extends Controller
                 ], 400);
             }
 
-            if ((count($ibos) > 0 || $property_owner->role === 'ibo')) {
+            if ((count($ibos) > 0 || $ibo->role === 'ibo')) {
                 //notify admin
                 $an = new AdminNotification;
                 $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
@@ -966,6 +975,14 @@ class PropertyController extends Controller
                 }
             }
 
+            if (JWTAuth::user()->role === 'ibo') {
+                $property->ibo = JWTAuth::user()->id;
+                $property->landlord  = $request->landlord ?? 0;
+                $property->posted_by = $request->landlord ?? JWTAuth::user()->id;
+            } else {
+                $property->posted_by = JWTAuth::user()->id;
+            }
+
             $property->name = $request->name;
             $property->short_description = $request->short_description;
             $property->for = $request->for;
@@ -1076,7 +1093,7 @@ class PropertyController extends Controller
 
         //check is he authorized to edit this property
         $l_user = JWTAuth::user();
-        if ($l_user->id !== $p->posted_by) {
+        if ($l_user->id !== $p->posted_by && $l_user->id !== $p->ibo) {
             $pv = DB::table('property_verifications')->where("property_id", $p->id)->where("ibo_id", $l_user->id)->first();
             if ($pv) {
                 if ($pv->property_id !== $p->id || $pv->status !== 'accepted') {
@@ -1720,7 +1737,7 @@ class PropertyController extends Controller
     {
         $user = JWTAuth::user();
         if ($user) {
-            $pids = Meeting::where("meeting_status", "visited");
+            $pids = Meeting::whereIn("meeting_status", ['visited', 'closed']);
             if ($user->role === 'tenant') {
                 $pids->where("created_by_id", $user->id);
             } else if ($user->role === 'ibo') {

@@ -64,7 +64,7 @@ class PropertyGalleryController extends Controller
 
         //check is he authorized to edit this property
         $l_user = JWTAuth::user();
-        if ($l_user->id !== $p->posted_by) {
+        if ($l_user->id !== $p->posted_by && $p->ibo !== $l_user->id) {
             $pv = DB::table('property_verifications')->where("property_id", $p->id)->where("ibo_id", $l_user->id)->first();
             if ($pv) {
                 if ($pv->property_id !== $p->id || $pv->status !== 'accepted') {

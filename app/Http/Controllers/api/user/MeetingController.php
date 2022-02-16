@@ -54,6 +54,7 @@ class MeetingController extends Controller
                         $m->landlord_vvc = $vvcode->code_for_landlord ?? '';
                         $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? '';
                         $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? '';
+                        $m->property_added_by = $p->ibo ? $p->ibo : $p->posted_by;
                         $vvcode = $vvcode ? $vvcode->vvc_code : null;
                     }
                     if ($user->role === 'tenant') {
@@ -197,6 +198,7 @@ class MeetingController extends Controller
                 $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? 0;
                 $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
                 $vvcode = $vvcode ? $vvcode->vvc_code : null;
+                $m->property_added_by = $p->ibo ? $p->ibo : $p->posted_by;
             }
             if ($user->role === 'tenant') {
                 $vvcode = VvcCode::where("property_id", $p->id)

@@ -110,7 +110,7 @@ class AgreementController extends Controller
                 } else {
                     return response([
                         'status'    => false,
-                        'message'   => 'Tenant Kyc is not verified yet. Contact to your IBO.'
+                        'message'   => 'Tenant Kyc is not verified yet. Contact to Rent a Roof Team.'
                     ], 400);
                 }
             } else {
@@ -144,19 +144,19 @@ class AgreementController extends Controller
                     if (!$landlord->signature) {
                         return response([
                             'status'    => false,
-                            'message'   => 'You have not uploaded signature yet. Please upload it first.'
+                            'message'   => 'Landlord has not uploaded signature yet. Please upload it first.'
                         ], 400);
                     }
                 } else {
                     return response([
                         'status'    => false,
-                        'message'   => 'Your Kyc is not verified yet.'
+                        'message'   => 'Landlord\'s Kyc is not verified yet.'
                     ], 400);
                 }
             } else {
                 return response([
                     'status'    => false,
-                    'message'   => 'You have not uploaded KYC details yet. Plesae upload it first.'
+                    'message'   => 'Landlord has not uploaded KYC details yet. Plesae upload it first.'
                 ], 400);
             }
         } else {

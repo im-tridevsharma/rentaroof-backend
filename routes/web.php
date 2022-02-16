@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,9 +20,31 @@ Route::get('/', function () {
 });
 
 Route::get('verify-email/{id}', function ($id) {
-    return $id;
+    $system_id = base64_decode($id, true);
+    if ($system_id) {
+        $user = User::where("system_userid", $system_id)->first();
+        $user->email_verified = 1;
+        if ($user->mobile_verified) {
+            $user->account_status = 'activated';
+        }
+        $user->save();
+        return '<h2>Email Verified Successfully.</h2>';
+    } else {
+        return 'Invalid verification token!';
+    }
 });
 
 Route::get('verify-mobile/{id}', function ($id) {
-    return $id;
+    $system_id = base64_decode($id, true);
+    if ($system_id) {
+        $user = User::where("system_userid", $system_id)->first();
+        $user->mobile_verified = 1;
+        if ($user->email_verified) {
+            $user->account_status = 'activated';
+        }
+        $user->save();
+        return '<h2>Mobile Verified Successfully.</h2>';
+    } else {
+        return 'Invalid verification token!';
+    }
 });
