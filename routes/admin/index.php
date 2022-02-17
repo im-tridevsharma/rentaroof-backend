@@ -98,6 +98,7 @@ Route::resource('cities', CityManagement::class)->middleware('admin');
 //manage locations
 Route::resource('locations', LocationManagement::class)->middleware('admin');
 //manage users
+Route::post('users/bulk_action', [UserManagement::class, 'bulk_action'])->middleware('admin');
 Route::get('users/total', [UserManagement::class, 'total'])->middleware('admin');
 Route::get('users/ban/{id}', [UserManagement::class, 'ban'])->middleware('admin');
 Route::get('users/activate/{id}', [UserManagement::class, 'activate'])->middleware('admin');

@@ -357,4 +357,63 @@ class UserManagement extends Controller
             'message' => 'User not found.'
         ], 404);
     }
+
+    //bulk action
+    public function bulk_action(Request $request)
+    {
+        if ($request->has('action') && $request->has('ids')) {
+            if (is_array($request->ids)) {
+                foreach ($request->ids as $id) {
+                    switch ($request->action) {
+                        case 'mark-activated':
+                            $user = User::find($id);
+                            if ($user) {
+                                $user->account_status = 'activated';
+                                $user->save();
+                            }
+                            break;
+                        case 'mark-banned':
+                            $user = User::find($id);
+                            if ($user) {
+                                $user->account_status = 'banned';
+                                $user->save();
+                            }
+                            break;
+                        case 'mark-deactivated':
+                            $user = User::find($id);
+                            if ($user) {
+                                $user->account_status = 'deactivated';
+                                $user->save();
+                            }
+                            break;
+                        case 'mark-not-verified':
+                            $user = User::find($id);
+                            if ($user) {
+                                $user->account_status = 'not-verified';
+                                $user->save();
+                            }
+                            break;
+                        case 'remove':
+                            $res = $this->destroy($id);
+                            break;
+                        default:
+                            return response([
+                                'status' => false,
+                                'message'   => 'Action not matched.'
+                            ], 404);
+                    }
+                }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Action performed successfully.'
+                ], 200);
+            }
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Please select records to perform actions.'
+            ], 422);
+        }
+    }
 }
