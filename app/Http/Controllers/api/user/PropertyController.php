@@ -322,7 +322,7 @@ class PropertyController extends Controller
                 $ibo_notify->save();
 
                 event(new NotificationSent($ibo_notify));
-            } else {
+            } else if ($ibo) {
                 DB::table('payment_splits')->insert([
                     'property_id'   => $property->id,
                     'ibo_id'        => $ibo->id,
@@ -344,7 +344,7 @@ class PropertyController extends Controller
             $createid = 'ID-' . time();
 
             if (count($ibos) > 0) {
-                if ($ibo && ($ibo->role !== 'ibo')) {
+                if (!$ibo) {
                     foreach ($ibos as $ibo) {
                         $user = User::where("role", "ibo")->where("id", $ibo->user_id)->first();
                         if ($user) {
