@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api\admin;
 
+use App\Exports\LandlordsExport;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\KycVerification;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class LandlordManagement extends Controller
 {
@@ -28,6 +30,25 @@ class LandlordManagement extends Controller
             'message' => 'Landlords fetched successfully.',
             'data'    => $landlords->load('kyc')
         ], 200);
+    }
+
+
+    //export
+    public function export()
+    {
+        Excel::store(new LandlordsExport, 'landlords.xlsx', 'public');
+        if (file_exists(public_path('storage/landlords.xlsx'))) {
+            return response([
+                'status'    => true,
+                'message'   => 'Download file.',
+                'url'       => url('storage/landlords.xlsx')
+            ]);
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Something went wrong'
+            ], 500);
+        }
     }
 
     /**

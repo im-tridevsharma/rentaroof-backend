@@ -12,6 +12,7 @@ use App\Http\Controllers\api\admin\IBOManagement;
 use App\Http\Controllers\api\admin\LandlordManagement;
 use App\Http\Controllers\api\admin\AmenityManagement;
 use App\Http\Controllers\api\admin\BlogManagement;
+use App\Http\Controllers\api\admin\BulkPropertyImport;
 use App\Http\Controllers\api\admin\ComplainManagement;
 use App\Http\Controllers\api\admin\EmployeeManagement;
 use App\Http\Controllers\api\admin\EnquiryManagement;
@@ -111,6 +112,7 @@ Route::get('ibos/activate/{id}', [IBOManagement::class, 'activate'])->middleware
 Route::post('ibos/kyc/verification/{id}', [IBOManagement::class, 'verify_kyc'])->middleware('admin');
 Route::resource('ibos', IBOManagement::class)->middleware('admin');
 //manage landlords
+Route::get('landlords/export', [LandlordManagement::class, 'export'])->middleware('admin');
 Route::get('landlords/total', [LandlordManagement::class, 'total'])->middleware('admin');
 Route::get('landlords/ban/{id}', [LandlordManagement::class, 'ban'])->middleware('admin');
 Route::get('landlords/activate/{id}', [LandlordManagement::class, 'activate'])->middleware('admin');
@@ -122,6 +124,7 @@ Route::resource('amenities', AmenityManagement::class)->middleware('admin');
 Route::resource('preferences', PreferenceManagement::class)->middleware('admin');
 //manage properties
 Route::post('properties/bulk_action', [PropertyManagement::class, 'bulk_action'])->middleware('admin');
+Route::post('properties/bulk_import', [BulkPropertyImport::class, 'importFromExcel'])->middleware('admin');
 Route::post('properties/verification/{id}', [PropertyManagement::class, 'verification'])->middleware('admin');
 Route::get('properties/reject_delete_request/{id}', [PropertyManagement::class, 'reject_delete_request'])->middleware('admin');
 Route::post('properties/assign_verification', [PropertyManagement::class, 'assign_verification'])->middleware('admin');

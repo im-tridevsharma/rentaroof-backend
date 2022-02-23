@@ -22,48 +22,48 @@
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Name</td>
-            <td style="height:50px;text-align:left;">{{ $landlord->first }} {{ $landlord->last }}</td>
+            <td style="height:50px;text-align:left;">{{ $landlord->first ?? '' }} {{ $landlord->last ?? '' }}</td>
             <td rowspan="4">
                 <div style="
                 background-repeat:no-repeat;
-                    background-position:center;background-size:cover;background-image:url({{ $landlord->profile_pic }});
+                    background-position:center;background-size:cover;background-image:url({{ $landlord->profile_pic ?? '' }});
                      width:150px; height:150px;border:1px solid lighrgay;">
                 </div>
             </td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Mobile</td>
-            <td style="height:50px;text-align:left;">{{ $landlord->mobile }}</td>
+            <td style="height:50px;text-align:left;">{{ $landlord->mobile ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Email</td>
-            <td style="height:50px;text-align:left;">{{ $landlord->email }}</td>
+            <td style="height:50px;text-align:left;">{{ $landlord->email ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Gender</td>
-            <td style="height:50px;text-align:left;">{{ $landlord->gender }}</td>
+            <td style="height:50px;text-align:left;">{{ $landlord->gender ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Present Address</td>
-            <td style="height:50px;text-align:left;">{{ $lkyc->present_address }}</td>
+            <td style="height:50px;text-align:left;">{{ $lkyc->present_address ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Permanent Address</td>
-            <td style="height:50px;text-align:left;">{{ $lkyc->permanent_address }}</td>
+            <td style="height:50px;text-align:left;">{{ $lkyc->permanent_address ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Document Type</td>
-            <td style="height:50px;text-align:left;">{{ $lkyc->document_type }}</td>
+            <td style="height:50px;text-align:left;">{{ $lkyc->document_type ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Document Number</td>
-            <td style="height:50px;text-align:left;">{{ $lkyc->document_number }}</td>
+            <td style="height:50px;text-align:left;">{{ $lkyc->document_number ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
@@ -72,7 +72,7 @@
                 <div
                     style="width:300px;height:120px;
                 background-repeat:no-repeat;
-                    background-position:center;background-size:cover;background-image:url({{ $lkyc->document_upload }});background-color:white;">
+                    background-position:center;background-size:cover;background-image:url({{ $lkyc->document_upload ?? '' }});background-color:white;">
                 </div>
             </td>
             <td></td>
@@ -83,7 +83,7 @@
                 <div style="width:300px;height:120px;
                 background-position:center;background-size:cover;
                 background-repeat:no-repeat;
-                    background-image:url({{ $landlord->signature }});background-color:white;">
+                    background-image:url({{ $landlord->signature ?? '' }});background-color:white;">
                 </div>
             </td>
             <td></td>
@@ -97,48 +97,48 @@
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Name</td>
-            <td style="height:50px;text-align:left;">{{ $tenant->first }} {{ $tenant->last }}</td>
+            <td style="height:50px;text-align:left;">{{ $tenant->first ?? '' }} {{ $tenant->last ?? '' }}</td>
             <td rowspan="4">
                 <div style="
                 background-repeat:no-repeat;
-                    background-position:center;background-size:cover;background-image:url({{ $tenant->profile_pic }});
+                    background-position:center;background-size:cover;background-image:url({{ $tenant->profile_pic ?? '' }});
                      width:150px; height:150px;border:1px solid lighrgay;">
                 </div>
             </td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Mobile</td>
-            <td style="height:50px;text-align:left;">{{ $tenant->mobile }}</td>
+            <td style="height:50px;text-align:left;">{{ $tenant->mobile ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Email</td>
-            <td style="height:50px;text-align:left;">{{ $tenant->email }}</td>
+            <td style="height:50px;text-align:left;">{{ $tenant->email ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Gender</td>
-            <td style="height:50px;text-align:left;">{{ $tenant->gender }}</td>
+            <td style="height:50px;text-align:left;">{{ $tenant->gender ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Present Address</td>
-            <td style="height:50px;text-align:left;">{{ $tkyc->present_address }}</td>
+            <td style="height:50px;text-align:left;">{{ $tkyc->present_address ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Permanent Address</td>
-            <td style="height:50px;text-align:left;">{{ $tkyc->permanent_address }}</td>
+            <td style="height:50px;text-align:left;">{{ $tkyc->permanent_address ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Document Type</td>
-            <td style="height:50px;text-align:left;">{{ $tkyc->document_type }}</td>
+            <td style="height:50px;text-align:left;">{{ $tkyc->document_type ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
             <td style="height:50px;text-align:left;">Document Number</td>
-            <td style="height:50px;text-align:left;">{{ $tkyc->document_number }}</td>
+            <td style="height:50px;text-align:left;">{{ $tkyc->document_number ?? '' }}</td>
             <td></td>
         </tr>
         <tr>
@@ -147,7 +147,7 @@
                 <div style="width:300px;height:120px;
                 background-position:center;background-size:cover;
                 background-repeat:no-repeat;
-                    background-image:url({{ $tkyc->document_upload }});background-color:white;">
+                    background-image:url({{ $tkyc->document_upload ?? '' }});background-color:white;">
                 </div>
             </td>
             <td></td>
@@ -158,7 +158,7 @@
                 <div style="width:300px;height:120px;
                 background-position:center;background-size:cover;
                 background-repeat:no-repeat;
-                    background-image:url({{ $tenant->signature }});background-color:white;">
+                    background-image:url({{ $tenant->signature ?? '' }});background-color:white;">
                 </div>
             </td>
             <td></td>
