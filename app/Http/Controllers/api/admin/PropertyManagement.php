@@ -87,7 +87,7 @@ class PropertyManagement extends Controller
             $property->amenities_data = $amenities_data;
             $property->preferences_data = $preferences_data;
             $property->owner_data = User::find($property->posted_by)->only(['id', 'first', 'last']);
-            $property->ibo_data = User::find($property->ibo)->only(['id', 'first', 'last']);
+            $property->ibo_data = User::find($property->ibo) ? User::find($property->ibo)->only(['id', 'first', 'last']) : null;
 
             return response([
                 'status'    => true,
