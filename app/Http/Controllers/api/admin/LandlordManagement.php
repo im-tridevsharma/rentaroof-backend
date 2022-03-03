@@ -200,6 +200,7 @@ class LandlordManagement extends Controller
         $user = new User;
         $user->role = "landlord";
         $user->first = $request->firstname;
+        $user->system_userid = 'LID-0' . rand(11111, 99999);
         $user->last = $request->lastname;
         $user->username = $request->username;
         $user->email = $request->email;

@@ -159,6 +159,7 @@ class UserManagement extends Controller
 
         $user = new User;
         $user->role = "tenant";
+        $user->system_userid = 'UID-0' . rand(11111, 99999);
         $user->first = $request->firstname;
         $user->last = $request->lastname;
         $user->username = $request->username;

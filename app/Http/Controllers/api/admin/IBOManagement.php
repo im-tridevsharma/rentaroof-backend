@@ -176,6 +176,7 @@ class IBOManagement extends Controller
 
         $user = new User;
         $user->role = "ibo";
+        $user->system_userid = 'IID-0' . rand(11111, 99999);
         $user->first = $request->firstname;
         $user->last = $request->lastname;
         $user->username = $request->username;
