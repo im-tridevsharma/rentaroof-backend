@@ -135,10 +135,6 @@ Route::get("preferences", function () {
 });
 
 
-Route::resource('ibo/notifications', IboNotificationController::class);
-Route::resource('landlord/notifications', LandlordNotificationController::class);
-Route::resource('tenant/notifications', TenantNotificationController::class);
-
 //store and login
 Route::post('/store_and_login', [PropertyController::class, 'storeAndLogin']);
 
@@ -179,6 +175,11 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::get('tenant/upcoming_payments', [AgreementController::class, 'upcoming_payments']);
     Route::get('police-verification/{id}', [AgreementController::class, 'police_verification']);
     Route::resource('agreements', AgreementController::class);
+
+
+    Route::resource('ibo/notifications', IboNotificationController::class);
+    Route::resource('landlord/notifications', LandlordNotificationController::class);
+    Route::resource('tenant/notifications', TenantNotificationController::class);
 
 
     //payment
