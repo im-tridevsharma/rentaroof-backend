@@ -358,7 +358,7 @@ class PropertyController extends Controller
                             $meeting->name = $request->name;
                             $meeting->contact = $request->contact;
                             $meeting->email = $request->email;
-                            $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : NULL;
+                            $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : date('Y-m-d H:i:s', strtotime('+1day'));
                             $meeting->end_time_expected = NULL;
                             $meeting->end_time = NULL;
                             $meeting->created_by_name = $request->name;
@@ -394,7 +394,7 @@ class PropertyController extends Controller
                 $meeting->name = $request->name;
                 $meeting->contact = $request->contact;
                 $meeting->email = $request->email;
-                $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : NULL;
+                $meeting->start_time = !empty($request->date) && !empty($request->time) ? date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time)) : date('Y-m-d H:i:s', strtotime('+1day'));
                 $meeting->end_time_expected = NULL;
                 $meeting->end_time = NULL;
                 $meeting->created_by_name = $request->name;
@@ -525,8 +525,8 @@ class PropertyController extends Controller
 
         $properties = Property::where("is_approved", 1)->where(function ($query) use ($request) {
             if ($request->has('search') && !empty($request->search)) {
-                $query->where("name", "like", "%" . $request->search . "%");
-                $query->orWhere("property_code", "like", "%" . $request->search . "%");
+                // $query->orWhere("name", "like", "%" . $request->search . "%");
+                // $query->orWhere("property_code", "like", "%" . $request->search . "%");
             }
         })->where(function ($q) use ($request, $locations) {
             if ($request->has('posted_by') && !empty($request->posted_by)) {

@@ -66,9 +66,19 @@ class MeetingController extends Controller
                         $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
                     }
 
+                    if ($user->role === 'landlord') :
+                        $vvcode = VvcCode::where("property_id", $p->id)
+                            ->where("tenant_id", $m->created_by_id)
+                            ->where("landlord_id", $p->posted_by)
+                            ->where("ibo_id", $m->user_id)->first();
+                        $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? 0;
+                        $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
+                        $m->ibo_id = $u->id;
+                    endif;
+
                     $m->property_data = $p->name . ' - ' . $p->property_code;
                     $m->vvc = $vvcode;
-
+                    $m->advance_payment = $p->advance_amount_period;
                     if ($user->role === 'ibo') :
                         $m->property_monthly_rent = $p->monthly_rent;
                         $m->property_security_amount = $p->security_amount;
@@ -76,9 +86,7 @@ class MeetingController extends Controller
                         $m->property_posted_by = $p->posted_by;
                         $m->landlord = User::select(['id', 'first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
                     endif;
-                    if ($user->role === 'landlord') :
-                        $m->ibo_id = $u->id;
-                    endif;
+
                     $m->front_image = $p->front_image;
                     $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
                     $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
@@ -97,15 +105,23 @@ class MeetingController extends Controller
     //vvc status
     public function update_vvc(Request $request)
     {
-        $vvc_code = $request->vvc;
-        if ($request->type && in_array($request->type, ['tenant', 'landlord'])) {
-            $data = $request->type === 'tenant' ? ["tenant_verified" => $request->status] : ["landlord_verified" => $request->status];
-            VvcCode::where("vvc_code", $vvc_code)->update($data);
-
-            return response([
-                'status'    => true,
-                'message'   => 'Status changed successfully.'
-            ]);
+        $vvc_code = $request->id;
+        if ($vvc_code && $request->vvc && $request->type && in_array($request->type, ['tenant', 'landlord'])) {
+            $is = VvcCode::where("vvc_code", $vvc_code)
+                ->where($request->type === 'tenant' ? 'code_for_tenant' : 'code_for_landlord', $request->vvc)->first();
+            if ($is) {
+                $data = $request->type === 'tenant' ? ["tenant_verified" => 1] : ["landlord_verified" => 1];
+                VvcCode::where("vvc_code", $vvc_code)->update($data);
+                return response([
+                    'status'    => true,
+                    'message'   => $request->type === 'tenant' ? 'Tenant verified successfully.' : 'Landlord verified successfully.'
+                ]);
+            } else {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Vvc code is invalid.'
+                ], 200);
+            }
         } else {
             return response([
                 "status"    => false,
@@ -208,19 +224,25 @@ class MeetingController extends Controller
                 $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? 0;
                 $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
             }
+            if ($user->role === 'landlord') :
+                $m->ibo_id = $u->id;
+                $vvcode = VvcCode::where("property_id", $p->id)
+                    ->where("tenant_id", $m->created_by_id)
+                    ->where("landlord_id", $p->posted_by)
+                    ->where("ibo_id", $m->user_id)->first();
+                $m->is_tenant_vvc_verified = $vvcode->tenant_verified ?? 0;
+                $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
+            endif;
 
             $m->property_data = $p->name . ' - ' . $p->property_code;
             $m->vvc = $vvcode;
-
+            $m->advance_payment = $p->advance_amount_period;
             if ($user->role === 'ibo') :
                 $m->property_monthly_rent = $p->monthly_rent;
                 $m->property_security_amount = $p->security_amount;
                 $m->property_asking_price = $p->offered_price;
                 $m->property_posted_by = $p->posted_by;
                 $m->landlord = User::select(['id', 'first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
-            endif;
-            if ($user->role === 'landlord') :
-                $m->ibo_id = $u->id;
             endif;
             $m->front_image = $p->front_image;
             $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
@@ -285,12 +307,13 @@ class MeetingController extends Controller
                             ->where("tenant_id", $m->created_by_id)
                             ->where("ibo_id", $m->user_id)->first();
                         $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
-                        $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+                        $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
 
                         $m->property_data = $p->name . ' - ' . $p->property_code;
                         $m->property_monthly_rent = $p->monthly_rent;
                         $m->property_security_amount = $p->security_amount;
                         $m->property_posted_by = $p->posted_by;
+                        $m->advance_payment = $p->advance_amount_period;
                         $m->front_image = $p->front_image;
                         $m->ibo = $u ? $u->first . ' ' . $u->last : '';
                         $m->ibo_id = $u->id;
@@ -392,7 +415,7 @@ class MeetingController extends Controller
                             ->where("tenant_id", $m->created_by_id)
                             ->where("ibo_id", $m->user_id)->first();
                         $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
-                        $vvcode = $vvcode ? $vvcode->code_for_tenant : null;
+                        $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
                         $m->property_data = $p->name . ' - ' . $p->property_code;
                         $m->vvc = $vvcode;
                         if ($user->role === 'landlord') :
