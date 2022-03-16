@@ -7,12 +7,14 @@ use App\Models\Address;
 use App\Models\IboEarning;
 use App\Models\KycVerification;
 use App\Models\LandlordEarning;
+use App\Models\OTPVerification;
 use App\Models\Property;
 use App\Models\PropertyDeal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -102,7 +104,27 @@ class UserController extends Controller
             ], 400);
         }
 
+
         $user = User::find($id);
+        if ($user->mobile !== $request->mobile) {
+            $is_mobile = User::where("mobile", $request->mobile)->first();
+            if ($is_mobile) {
+                return response([
+                    'status'    => false,
+                    'message'   => $request->mobile . ' Mobile number is already is use.'
+                ], 400);
+            }
+        }
+
+        if ($user->email !== $request->email) {
+            $is_email = User::where("email", $request->email)->first();
+            if ($is_email) {
+                return response([
+                    'status'    => false,
+                    'message'   => $request->email . ' is already is use.'
+                ], 400);
+            }
+        }
 
         $profile_pic_url = '';
         if ($request->hasFile('profile_pic')) {
@@ -625,6 +647,96 @@ class UserController extends Controller
             'status'    => true,
             'message'   => 'Landlord added successfully.'
         ]);
+    }
+
+    //sendOtp
+    public function sendOtp(Request $request)
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $botp = rand(111111, 999999);
+            if ($request->type !== 'email') {
+                $otp = 'Rent a Roof : OTP for mobile verification is - ' . $botp;
+                $is_otp = sms($otp, $user->mobile);
+            } else {
+                $otp_data = [
+                    "user"  => $user->first . ' ' . $user->last,
+                    "otp"   => $botp,
+                    "email" => $user->email
+                ];
+                $is_otp = send_email_otp($otp_data);
+            }
+
+            if ($is_otp) {
+                //save this in database
+                $dbotp = new OTPVerification;
+                $dbotp->txn_id = $is_otp;
+                $dbotp->user_id = $user->id;
+                $dbotp->OTP = $botp;
+                $dbotp->sent_for = $request->type == 'email' ? "email_verification" : "mobile_verification";
+                $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
+                $dbotp->save();
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'OTP Sent sucessfully.',
+                    'user'      => $user->only('id', 'email', 'mobile')
+                ], 200);
+            } else {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Something went wrong. Please check your mobile number.',
+                ], 500);
+            }
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Token is not valid.'
+            ], 401);
+        }
+    }
+
+    //verify otp
+    public function verifyOtp(Request $request)
+    {
+        $user = JWTAuth::user();
+        $otp  = $request->otp;
+
+        $votp = OTPVerification::where("user_id", $user->id)
+            ->where('sent_for', $request->type == 'email' ? 'email_verification' : 'mobile_verification')
+            ->where("OTP", $otp)->where("is_expired", 0)->first();
+
+        if ($votp && date("Y-m-d H:i:s", strtotime($votp->expired_at)) < date('Y-m-d H:i:s')) {
+            return response([
+                'status'    => false,
+                'message'   => 'OTP has been expired.'
+            ], 200);
+        }
+
+        if ($votp && $votp->OTP === $otp) {
+            $votp->is_expired = 1;
+            $votp->save();
+
+            if ($request->type == 'email') {
+                $user->email_verified = 1;
+            } else {
+                $user->mobile_verified = 1;
+            }
+
+            $user->save();
+
+            $res = [
+                'status'    => true,
+                'type'      => $request->type,
+                'message'   => $request->type === 'email' ? 'Email verified successfully.' : 'Mobile verified successfully.'
+            ];
+            return response($res, 200);
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'OTP doesn\'t match.'
+            ], 200);
+        }
     }
 
     //getLandlords

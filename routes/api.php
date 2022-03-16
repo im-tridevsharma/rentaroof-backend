@@ -139,6 +139,10 @@ Route::get("preferences", function () {
 Route::post('/store_and_login', [PropertyController::class, 'storeAndLogin']);
 
 Route::group(['middleware' => 'jwt.verify'], function () {
+
+    Route::get('send-otp', [UserController::class, 'sendOtp']);
+    Route::post('verify-otp', [UserController::class, 'verifyOtp']);
+
     Route::get('/get-my-landlords', [UserController::class, 'getLandlords']);
     Route::post('register-new-landlord', [UserController::class, 'newLandlord']);
 
