@@ -523,71 +523,73 @@ class PropertyController extends Controller
 
         $locations = $locations->pluck('id')->toArray();
 
-        $properties = Property::where("is_approved", 1)->where(function ($query) use ($request) {
-            if ($request->has('search') && !empty($request->search)) {
-                // $query->orWhere("name", "like", "%" . $request->search . "%");
-                // $query->orWhere("property_code", "like", "%" . $request->search . "%");
-            }
-        })->where(function ($q) use ($request, $locations) {
-            if ($request->has('posted_by') && !empty($request->posted_by)) {
-                $q->where("posted_by", $request->posted_by);
-            }
-            if ($request->has('bath') && !empty($request->bath)) {
-                $q->where("bathrooms", $request->bath);
-            }
-            if ($request->has('ownership') && !empty($request->ownership)) {
-                $q->whereIn("ownership_type", explode(",", $request->ownership));
-            }
-            if ($request->has('bed') && !empty($request->bed)) {
-                $q->where("bedrooms", $request->bed);
-            }
-            if ($request->has('furnishing') && !empty($request->furnishing)) {
-                $q->where("furnished_status", $request->furnishing);
-            }
-            if ($request->has('ptype') && !empty($request->ptype)) {
-                $q->where("type", $request->ptype);
-            }
-            if ($request->has('amenities') && !empty($request->amenities)) {
-                $a = explode(",", $request->amenities);
-                $a = implode('", "', $a);
-                $q->whereRaw('JSON_CONTAINS(amenities, \'["' . $a . '"]\')');
-            }
+        $properties = Property::where("is_approved", 1)
+            ->where('is_closed', 0)
+            ->where(function ($query) use ($request) {
+                if ($request->has('search') && !empty($request->search)) {
+                    // $query->orWhere("name", "like", "%" . $request->search . "%");
+                    // $query->orWhere("property_code", "like", "%" . $request->search . "%");
+                }
+            })->where(function ($q) use ($request, $locations) {
+                if ($request->has('posted_by') && !empty($request->posted_by)) {
+                    $q->where("posted_by", $request->posted_by);
+                }
+                if ($request->has('bath') && !empty($request->bath)) {
+                    $q->where("bathrooms", $request->bath);
+                }
+                if ($request->has('ownership') && !empty($request->ownership)) {
+                    $q->whereIn("ownership_type", explode(",", $request->ownership));
+                }
+                if ($request->has('bed') && !empty($request->bed)) {
+                    $q->where("bedrooms", $request->bed);
+                }
+                if ($request->has('furnishing') && !empty($request->furnishing)) {
+                    $q->where("furnished_status", $request->furnishing);
+                }
+                if ($request->has('ptype') && !empty($request->ptype)) {
+                    $q->where("type", $request->ptype);
+                }
+                if ($request->has('amenities') && !empty($request->amenities)) {
+                    $a = explode(",", $request->amenities);
+                    $a = implode('", "', $a);
+                    $q->whereRaw('JSON_CONTAINS(amenities, \'["' . $a . '"]\')');
+                }
 
 
-            if ($request->has('budget') && !empty($request->budget)) {
-                $price = explode("-", $request->budget);
-                $min_price = floatval($price[0] ?? 1000);
-                $max_price = floatval($price[1] ?? 20000);
+                if ($request->has('budget') && !empty($request->budget)) {
+                    $price = explode("-", $request->budget);
+                    $min_price = floatval($price[0] ?? 1000);
+                    $max_price = floatval($price[1] ?? 20000);
 
-                $q->where("monthly_rent", ">=", $min_price);
-                $q->where("monthly_rent", "<=", $max_price);
-            }
+                    $q->where("monthly_rent", ">=", $min_price);
+                    $q->where("monthly_rent", "<=", $max_price);
+                }
 
 
-            if ($request->has('min_size') && !empty($request->min_size)) {
-                $q->where("super_area", ">=", $request->min_size);
-            }
-            if ($request->has('max_size') && !empty($request->max_size)) {
-                $q->where("super_area", "<=", $request->max_size);
-            }
-            if ($request->has('readytomove') && $request->readytomove == 'yes') {
-                $q->where("available_immediately", 1);
-            }
-            if ($request->has('available_from') && !empty($request->available_from)) {
-                $q->whereDate("available_from", ">=", date("Y-m-d", strtotime($request->available_from)));
-            }
-            if ($request->has('available_to') && !empty($request->available_to)) {
-                $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
-            }
+                if ($request->has('min_size') && !empty($request->min_size)) {
+                    $q->where("super_area", ">=", $request->min_size);
+                }
+                if ($request->has('max_size') && !empty($request->max_size)) {
+                    $q->where("super_area", "<=", $request->max_size);
+                }
+                if ($request->has('readytomove') && $request->readytomove == 'yes') {
+                    $q->where("available_immediately", 1);
+                }
+                if ($request->has('available_from') && !empty($request->available_from)) {
+                    $q->whereDate("available_from", ">=", date("Y-m-d", strtotime($request->available_from)));
+                }
+                if ($request->has('available_to') && !empty($request->available_to)) {
+                    $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
+                }
 
-            if (
-                $request->state || $request->city || $request->area ||
-                $request->sub_area || $request->zone || $request->pincode
-                || $request->route
-            ) {
-                $q->whereIn("address_id", $locations);
-            }
-        })->with("address");
+                if (
+                    $request->state || $request->city || $request->area ||
+                    $request->sub_area || $request->zone || $request->pincode
+                    || $request->route
+                ) {
+                    $q->whereIn("address_id", $locations);
+                }
+            })->with("address");
 
         if ($request->has("sorting")) {
             $properties = $request->sorting == 'newest' ? $properties->orderBy("created_at", "desc") : $properties->orderBy("created_at", "asc");
@@ -1467,7 +1469,7 @@ class PropertyController extends Controller
             $deal = PropertyDeal::where("offer_for", $user->id)->where("id", $id)->first();
             if ($deal) {
                 $deal->status = $request->status;
-                $deal->conversationId = $request->has('convesationId') ? $request->conversationId : 0;
+                $deal->conversationId = $request->has('convesationId') ? $request->conversationId : $deal->conversationId;
                 $deal->save();
                 $deal->property = Property::where("id", $deal->property_id)->first(['name', 'property_code', 'front_image', 'monthly_rent']);
 

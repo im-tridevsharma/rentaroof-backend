@@ -336,7 +336,7 @@ class ConversationController extends Controller
                 $deal->offer_for = $request->receiver_id;
                 $deal->offer_price = $request->offer_price;
                 $deal->conversationId = $conversation->id;
-                $deal->offer_expires_time = date("Y-m-d H:i:s", strtotime($request->offer_expires_date . ' ' . $request->offer_expires_time));
+                $deal->offer_expires_time = null; // date("Y-m-d H:i:s", strtotime($request->offer_expires_date . ' ' . $request->offer_expires_time));
 
                 $deal->save();
 

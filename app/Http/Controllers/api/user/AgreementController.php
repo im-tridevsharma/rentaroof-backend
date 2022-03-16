@@ -182,6 +182,9 @@ class AgreementController extends Controller
         $agreement->fee_percentage = $request->has('fee_percentage') ? $request->fee_percentage : 0;
         $agreement->fee_amount = $request->has('fee_amount') ? $request->fee_amount : 0.0;
         $agreement->number_of_invoices = 0;
+        $agreement->advance_amount = $request->advance_amount ?? 0;
+        $agreement->advance_period = $request->advance_period ?? '';
+        $agreement->first_payment  = $request->first_month_payment ?? ($request->has('fee_amount') ? $request->fee_amount : 0.0);
         $agreement->security_amount = $request->has('security_amount') ? $request->security_amount : 0;
 
         if (!User::find($agreement->landlord_id)) {

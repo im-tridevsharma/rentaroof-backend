@@ -120,8 +120,11 @@ class RazorpayController extends Controller
                     //update agreement if type is agreement
                     if ($payment->type === 'rent') {
                         $agreement = Agreement::where("id", $payment->type_id)->first();
-                        $agreement->number_of_invoices = Transaction::where("type_id", $agreement->id)->count();
+                        $invoices = Transaction::where("type_id", $agreement->id)->count();
+                        $agreement->number_of_invoices = $invoices;
 
+                        $advance = explode(' ', $agreement->advance_period);
+                        $advance = $advance[0] ?? 0;
                         $this_due = $agreement->next_due;
 
                         if ($agreement->payment_frequency === 'monthly') {
@@ -135,6 +138,10 @@ class RazorpayController extends Controller
                         }
                         if ($agreement->payment_frequency === 'yearly') {
                             $agreement->next_due = Carbon::parse($agreement->next_due)->addMonths(12);
+                        }
+
+                        if ($invoices == 0  && $advance) {
+                            $agreement->next_due = Carbon::parse($agreement->next_due)->addMonths($advance);
                         }
 
                         $agreement->save();

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Validator;
 
 use App\Models\Meeting;
 use App\Models\Property;
+use App\Models\PropertyDeal;
 use App\Models\User;
 use App\Models\VvcCode;
 use Illuminate\Support\Facades\DB;
@@ -79,6 +80,11 @@ class MeetingController extends Controller
                     $m->property_data = $p->name . ' - ' . $p->property_code;
                     $m->vvc = $vvcode;
                     $m->advance_payment = $p->advance_amount_period;
+
+                    $last_deal = PropertyDeal::where('property_id', $p->id)
+                        ->orderBy('id', 'desc')->first();
+                    $m->final = $last_deal ? $last_deal->offer_price : 0;
+
                     if ($user->role === 'ibo') :
                         $m->property_monthly_rent = $p->monthly_rent;
                         $m->property_security_amount = $p->security_amount;
@@ -237,6 +243,9 @@ class MeetingController extends Controller
             $m->property_data = $p->name . ' - ' . $p->property_code;
             $m->vvc = $vvcode;
             $m->advance_payment = $p->advance_amount_period;
+            $last_deal = PropertyDeal::where('property_id', $p->id)
+                ->orderBy('id', 'desc')->first();
+            $m->final = $last_deal ? $last_deal->offer_price : 0;
             if ($user->role === 'ibo') :
                 $m->property_monthly_rent = $p->monthly_rent;
                 $m->property_security_amount = $p->security_amount;
@@ -314,6 +323,9 @@ class MeetingController extends Controller
                         $m->property_security_amount = $p->security_amount;
                         $m->property_posted_by = $p->posted_by;
                         $m->advance_payment = $p->advance_amount_period;
+                        $last_deal = PropertyDeal::where('property_id', $p->id)
+                            ->orderBy('id', 'desc')->first();
+                        $m->final = $last_deal ? $last_deal->offer_price : 0;
                         $m->front_image = $p->front_image;
                         $m->ibo = $u ? $u->first . ' ' . $u->last : '';
                         $m->ibo_id = $u->id;
@@ -423,6 +435,9 @@ class MeetingController extends Controller
                         endif;
                         $m->front_image = $p->front_image;
                         $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
+                        $last_deal = PropertyDeal::where('property_id', $p->id)
+                            ->orderBy('id', 'desc')->first();
+                        $m->final = $last_deal ? $last_deal->offer_price : 0;
                         $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
                         $m->agreement = $a;
 
