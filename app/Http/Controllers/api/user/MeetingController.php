@@ -33,7 +33,7 @@ class MeetingController extends Controller
         $user = JWTAuth::user();
         $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc");
         if ($user && $user->role === 'tenant') {
-            $meetings->where("meeting_status", '!=', 'pending');
+            // $meetings->where("meeting_status", '!=', 'pending');
             $meetings->where("user_id", '!=', 0);
         }
         $meetings = $meetings->get();

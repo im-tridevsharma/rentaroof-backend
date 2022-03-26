@@ -4,12 +4,14 @@ namespace App\Http\Controllers\api\admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\IboRating;
 use App\Models\KycVerification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class IBOManagement extends Controller
 {
@@ -405,5 +407,24 @@ class IBOManagement extends Controller
             'status'  => false,
             'message' => 'IBO not found.'
         ], 404);
+    }
+
+    //get ibo reviews
+    public function reviews($id)
+    {
+        $ibo = User::find($id);
+        if ($ibo && $ibo->role === 'ibo') {
+            $reviews = IboRating::where("ibo_id", $ibo->id)->get();
+            return response([
+                'status' => true,
+                'message' => 'Rating and Reviews.',
+                'data'   => $reviews
+            ]);
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Ibo not found.'
+            ]);
+        }
     }
 }

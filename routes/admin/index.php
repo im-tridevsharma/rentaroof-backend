@@ -110,6 +110,7 @@ Route::get('ibos/total', [IBOManagement::class, 'total'])->middleware('admin');
 Route::get('ibos/ban/{id}', [IBOManagement::class, 'ban'])->middleware('admin');
 Route::get('ibos/activate/{id}', [IBOManagement::class, 'activate'])->middleware('admin');
 Route::post('ibos/kyc/verification/{id}', [IBOManagement::class, 'verify_kyc'])->middleware('admin');
+Route::get('ibos/ratings/{id}', [IBOManagement::class, 'reviews'])->middleware('admin');
 Route::resource('ibos', IBOManagement::class)->middleware('admin');
 //manage landlords
 Route::get('landlords/export', [LandlordManagement::class, 'export'])->middleware('admin');

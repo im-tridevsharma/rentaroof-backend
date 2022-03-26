@@ -124,7 +124,7 @@ class MeetingManagement extends Controller
             ]);
             $meeting->meeting_history = json_encode($meeting_history);
             $meeting->user_id = $request->ibo_id;
-            $meeting->start_time = date('Y-m-d H:i:s', strtotime('tomorrow'));
+            $meeting->start_time = date('Y-m-d H:i:s', strtotime('+1day'));
             $meeting->meeting_status = "pending";
             $meeting->save();
 

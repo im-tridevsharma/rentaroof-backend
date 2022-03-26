@@ -287,48 +287,30 @@ class AuthController extends Controller
                 'email' => $user->email
             ];
 
-            $is_sent = send_email_otp($otp_data);
-            if ($is_sent) {
+            //send otp to mobile
+            $motp = rand(111111, 999999);
+            $otp = 'Verify your mobile number with Rent A Roof. OTP for verification is - ' . $motp;
+            $is_otp = sms($otp, $user->mobile);
+            if ($is_otp) {
                 //save this in database
                 $dbotp = new OTPVerification;
-                $dbotp->txn_id = time();
+                $dbotp->txn_id = $is_otp;
                 $dbotp->user_id = $user->id;
-                $dbotp->OTP = $botp;
-                $dbotp->sent_for = "email_verification";
+                $dbotp->OTP = $motp;
+                $dbotp->sent_for = "mobile_verification";
                 $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
                 $dbotp->save();
-
-                //send otp to mobile
-                $motp = rand(111111, 999999);
-                $otp = 'Verify your mobile number with Rent A Roof. OTP for verification is - ' . $motp;
-                $is_otp = sms($otp, $user->mobile);
-                if ($is_otp) {
-                    //save this in database
-                    $dbotp = new OTPVerification;
-                    $dbotp->txn_id = $is_otp;
-                    $dbotp->user_id = $user->id;
-                    $dbotp->OTP = $motp;
-                    $dbotp->sent_for = "mobile_verification";
-                    $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
-                    $dbotp->save();
-                } else {
-                    $user->delete();
-                    return response([
-                        'status'  => false,
-                        'message' => 'Unable to send otp to your mobile! Please check your mobile number.'
-                    ]);
-                }
             } else {
                 $user->delete();
                 return response([
                     'status'  => false,
-                    'message' => 'Unable to send otp to your email! Please check your email id.'
+                    'message' => 'Unable to send otp to your mobile! Please check your mobile number.'
                 ]);
             }
 
             return response([
                 'status' => true,
-                'message' => 'OTP has been sent on email and your mobile for Verification. Please verify!',
+                'message' => 'OTP has been sent on your mobile for Verification. Please verify!',
                 'user'   => $user->only('id', 'email', 'mobile')
             ], 200);
         } else {
@@ -360,21 +342,6 @@ class AuthController extends Controller
             }
 
             if ($votp && $votp->OTP === $otp) {
-                // if (!$request->has('forgotpass')) {
-                //     $botp = rand(111111, 999999);
-                //     $otp = 'Verify your mobile number with Rent A Roof. OTP for verification is - ' . $botp;
-                //     $is_otp = sms($otp, $user->mobile);
-                //     if ($is_otp) {
-                //         //save this in database
-                //         $dbotp = new OTPVerification;
-                //         $dbotp->txn_id = $is_otp;
-                //         $dbotp->user_id = $user->id;
-                //         $dbotp->OTP = $botp;
-                //         $dbotp->sent_for = "mobile_verification";
-                //         $dbotp->expired_at = Carbon::now()->addMinutes(10)->format('Y-m-d H:i:s');
-                //         $dbotp->save();
-                //     }
-                // }
 
                 $votp->is_expired = 1;
                 $votp->save();
@@ -423,7 +390,7 @@ class AuthController extends Controller
 
                 if (!$request->has('forgotpass')) {
                     $this->userTools($user);
-                    $user->email_verified = 1;
+                    $user->email_verified = 0;
                     $user->mobile_verified = 1;
                     $user->account_status = "activated";
                     $user->save();
@@ -434,11 +401,14 @@ class AuthController extends Controller
 
                 $res = [
                     'status'    => true,
-                    'message'   => $request->has('forgotpass') ? 'Create Your New Password. Session is only valid for 5 minutes.' : 'Mobile Verified. Redirecting you to login page.'
+                    'message'   => $request->has('forgotpass') ? 'Create Your New Password. Session is only valid for 5 minutes.' : 'Mobile Verified. Redirecting...'
                 ];
 
                 if ($request->has('forgotpass')) {
                     $res['_token']  = encrypt(['user' => $user->id, 'expires' => Carbon::now()->addMinutes(5)->format('Y-m-d H:i:s')], 1);
+                } else {
+                    $res['token'] = JWTAuth::fromUser($user);
+                    $res['user']  = $user;
                 }
 
                 return response($res, 200);
