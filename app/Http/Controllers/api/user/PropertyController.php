@@ -289,7 +289,10 @@ class PropertyController extends Controller
 
             //Check property owner
             $ibo = User::find($property->ibo);
-            if ($property->ibo && $ibo->ibo_duty_mode === 'online') {
+            if (
+                $property->ibo
+                // && $ibo->ibo_duty_mode === 'online'
+            ) {
                 $meeting = new  Meeting;
                 $meeting->create_id = time();
                 $meeting->title = 'Property visit request';
@@ -337,7 +340,9 @@ class PropertyController extends Controller
                 ->select("user_id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
                 + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
-                ->having('distance', '<', 2111550)
+                ->join('users', 'users.id', '=', 'addresses.user_id')
+                ->where('users.role', '=', 'ibo')
+                ->having('distance', '<', env('ASSIGN_DISTANCE'))
                 ->orderBy('distance', 'asc')->distinct()
                 ->where("user_id", "!=", NULL)->get();
 
@@ -383,7 +388,7 @@ class PropertyController extends Controller
                         }
                     }
                 }
-            } else {
+            } else if (!$ibo) {
                 $meeting = new  Meeting;
                 $meeting->create_id = time();
                 $meeting->title = 'Property visit request';
@@ -413,7 +418,7 @@ class PropertyController extends Controller
             if ((count($ibos) > 0 || $ibo->role === 'ibo')) {
                 //notify admin
                 $an = new AdminNotification;
-                $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
+                $an->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by agents.';
                 $an->type  = 'Urgent';
                 $an->title = 'New Meeting Request';
                 $an->redirect = '/admin/meetings';
@@ -427,7 +432,7 @@ class PropertyController extends Controller
                 $user_notify->tenant_id = JWTAuth::user() ? JWTAuth::user()->id : 0;
                 $user_notify->type = 'Urgent';
                 $user_notify->title = 'You successfully scheduled a visit.';
-                $user_notify->content = 'Scheduled a visit for property - ' . $property->property_code . '. Our executive will contact you soon.';
+                $user_notify->content = 'Scheduled a visit for property - ' . $property->property_code . '. Our agent will contact you soon.';
                 $user_notify->name = 'Rent A Roof';
 
                 $user_notify->save();
@@ -439,7 +444,7 @@ class PropertyController extends Controller
                 $landlord_notify->landlord_id = $property->posted_by;
                 $landlord_notify->type = 'Urgent';
                 $landlord_notify->title = 'New meeting request.';
-                $landlord_notify->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by executives.';
+                $landlord_notify->content = 'New meeting request for property - ' . $property->property_code . '. Assigned to near by agents.';
                 $landlord_notify->name = 'Rent A Roof';
                 $landlord_notify->redirect = '/landlord/appointment';
 
