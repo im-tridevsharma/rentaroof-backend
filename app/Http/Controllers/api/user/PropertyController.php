@@ -307,6 +307,7 @@ class PropertyController extends Controller
                 $meeting->end_time_expected = NULL;
                 $meeting->end_time = NULL;
                 $meeting->created_by_name = $request->name;
+                $meeting->landlord_status = 'pending';
                 $meeting->created_by_role = JWTAuth::user() ? JWTAuth::user()->role : 'guest';
                 $meeting->created_by_id = JWTAuth::user() ? JWTAuth::user()->id : NULL;
                 $meeting->meeting_history = json_encode([]);

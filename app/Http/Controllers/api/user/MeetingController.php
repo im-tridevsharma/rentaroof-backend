@@ -561,19 +561,13 @@ class MeetingController extends Controller
     public function show($id)
     {
         $user = JWTAuth::user();
-        $meeting = Meeting::where(function ($q) use ($id, $user) {
-            $q->where("id", $id);
-            $q->where(function ($q) use ($user) {
-                $q->where("user_id", $user->id);
-                $q->orWhere("created_by_id", $user->id);
-            });
-        })->get();
+        $meeting = Meeting::where("id", $id)->first();
 
-        if ($meeting && count($meeting) > 0) {
+        if ($meeting) {
             return response([
                 'status'    => true,
                 'message'   => 'Meeting fetched successfully.',
-                'data'      => $meeting[0]
+                'data'      => $meeting
             ], 200);
         }
 
@@ -679,16 +673,14 @@ class MeetingController extends Controller
             ], 404);
         }
 
-        $meeting = Meeting::where(function ($q) use ($id, $user) {
-            $q->where("id", $id);
-            $q->where(function ($q) use ($user) {
-                $q->where("user_id", $user->id);
-                $q->orWhere("created_by_id", $user->id);
-            });
-        })->get();
+        $meeting = Meeting::where("id", $id)->first();
 
-        if ($meeting && count($meeting) > 0) {
-            $meeting = $meeting[0];
+        if ($meeting) {
+
+            if ($user->role === 'landlord') {
+                return $this->update_landlord_meeting_status($request, $meeting);
+            }
+
             $meeting->meeting_status = $request->status;
             $ibo_id = $meeting->user_id;
 
@@ -935,6 +927,45 @@ class MeetingController extends Controller
         ], 404);
     }
 
+    public function update_landlord_meeting_status(Request $request, $meeting)
+    {
+        if ($meeting) {
+            $meeting->landlord_status = $request->status;
+            $meeting->save();
+
+            $property = Property::find($meeting->property_id);
+
+            //notify ibo
+            $inotify = new IboNotification;
+            $inotify->ibo_id = $meeting->user_id;
+            $inotify->type = 'Urgent';
+            $inotify->title = 'Landlord updated appintment status!';
+            $inotify->content = 'Landlord of property ' . $property->name . ' updated appointment status to ' . $request->status;
+            $inotify->name = 'Rent A Roof';
+            $inotify->save();
+            event(new NotificationSent($inotify));
+
+            //notify admin
+            $an = new AdminNotification;
+            $an->content = 'Landlord of property ' . $property->name . ' updated meeting status to ' . $request->status;
+            $an->type  = 'Urgent';
+            $an->title = 'Meeting Status Updated';
+            $an->redirect = '/admin/meetings';
+            $an->save();
+            event(new AdminNotificationSent($an));
+
+            return response([
+                'status'    => true,
+                'message'   => 'Meeting status updated!'
+            ], 200);
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Meeting not found.'
+            ], 404);
+        }
+    }
+
     public function reschedule(Request $request, $id)
     {
         $user = JWTAuth::user();
@@ -951,16 +982,9 @@ class MeetingController extends Controller
             ], 404);
         }
 
-        $meeting = Meeting::where(function ($q) use ($id, $user) {
-            $q->where("id", $id);
-            $q->where(function ($q) use ($user) {
-                $q->where("user_id", $user->id);
-                $q->orWhere("created_by_id", $user->id);
-            });
-        })->get();
+        $meeting = Meeting::where("id", $id)->first();
 
-        if ($meeting && count($meeting) > 0) {
-            $meeting = $meeting[0];
+        if ($meeting) {
             $meeting->meeting_status = 'scheduled';
             $meeting->start_time = date("Y-m-d H:i:s", strtotime($request->date . ' ' . $request->time));
             $meeting_history = json_decode($meeting->meeting_history);
