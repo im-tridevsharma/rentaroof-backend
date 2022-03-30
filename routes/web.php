@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Cron\CronJobController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return time();
 });
+
+Route::get('/cron/check-for-appointment', [CronJobController::class, '_check_for_appointment']);
 
 Route::get('verify-email/{id}', function ($id) {
     $system_id = base64_decode($id, true);

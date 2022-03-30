@@ -1552,13 +1552,14 @@ class PropertyController extends Controller
                             ->where("accepted", 1)->get();
 
                         foreach ($ibos as $ibo) {
+                            $percent = $ibo->split_percent ?? 10;
                             $earning = new IboEarning;
                             $earning->ibo_id = $ibo->ibo_id;
                             $earning->deal_id = $deal->id ?? 0;
                             $earning->property_id = $agreement->property_id;
                             $earning->agreement_id = $agreement->id;
-                            $earning->amount_percentage = $agreement->fee_percentage / count($ibos);
-                            $earning->amount = $agreement->fee_amount / count($ibos);
+                            $earning->amount_percentage = $ibo->split_percent ?? 0;
+                            $earning->amount = $agreement->fee_amount * $percent / 100;
 
                             $earning->save();
 

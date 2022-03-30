@@ -33,10 +33,7 @@ class MeetingController extends Controller
     {
         $user = JWTAuth::user();
         $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc");
-        if ($user && $user->role === 'tenant') {
-            // $meetings->where("meeting_status", '!=', 'pending');
-            $meetings->where("user_id", '!=', 0);
-        }
+
         $meetings = $meetings->get();
 
         if ($meetings) {
@@ -734,6 +731,19 @@ class MeetingController extends Controller
                         //if it was posted by an agent
                         $property = Property::find($meeting->property_id);
                         if ($property && $property->ibo === $user->id) {
+
+                            //check is there any slipt
+                            $is_split = DB::table('payment_splits')->where("property_id", $property->id)->count();
+                            if ($is_split === 0) {
+                                DB::table('payment_splits')->insert([
+                                    'property_id'   => $meeting->property_id,
+                                    'ibo_id'        => $meeting->user_id,
+                                    'accepted'      => 1,
+                                    'paid'          => 0,
+                                    'split_percent' => 20
+                                ]);
+                            }
+
                             //assign to other nearby agents except he
                             $address = Address::find($property->address_id);
 

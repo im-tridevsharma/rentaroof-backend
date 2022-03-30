@@ -144,10 +144,21 @@ class MeetingManagement extends Controller
 
             //if payment slipt is enabled store it
             if ($request->has('payment_split') && $request->payment_split === 'yes') {
-                DB::table('payment_splits')->insert([
-                    'property_id'   => $property->id,
-                    'ibo_id'        => $request->ibo_id,
-                ]);
+                $is = DB::table('payment_splits')->where("property_id", $property->id)
+                    ->where("ibo_id", $request->ibo_id)->first();
+                if ($is) {
+                    DB::table('payment_splits')->where("property_id", $property->id)
+                        ->where("ibo_id", $request->ibo_id)
+                        ->update([
+                            'split_percent' => $request->percent ?? 10
+                        ]);
+                } else {
+                    DB::table('payment_splits')->insert([
+                        'property_id'   => $property->id,
+                        'ibo_id'        => $request->ibo_id,
+                        'split_percent' => $request->percent ?? 10
+                    ]);
+                }
             }
 
             return response([
