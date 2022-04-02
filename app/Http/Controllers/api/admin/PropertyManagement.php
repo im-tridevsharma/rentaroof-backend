@@ -66,7 +66,9 @@ class PropertyManagement extends Controller
         if ($pv && $pv->ibo_id) {
             $pv->ibo = User::find($pv->ibo_id);
         }
+        $inspection = DB::table('inspections')->where('property_id', $id)->first();
         $property->verification = $pv;
+        $property->inspection = $inspection;
         if ($property) {
             $amenities_data = [];
             $preferences_data = [];

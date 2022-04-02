@@ -134,6 +134,29 @@ class PropertyController extends Controller
     {
         $is = DB::table('property_verifications')->where("id", $id)->first();
         if ($is) {
+
+            if ($request->has('inspection') && $request->inspection) {
+                DB::table("inspections")->insert([
+                    'property_id'   => $is->property_id,
+                    'ibo_id'        => JWTAuth::user()->id ?? 0,
+                    'address'       => $request->address,
+                    'super_area'    => $request->super_area,
+                    'carpet_area'   => $request->carpet_area,
+                    'bedrooms'      => $request->bedrooms,
+                    'bathrooms'     => $request->bathrooms,
+                    'balconies'     => $request->balconies,
+                    'floors'        => $request->floors,
+                    'renting_amount' => $request->renting_amount,
+                    'images'        => $request->images,
+                    'amenities'     => $request->amenities,
+                    'preferences'   => $request->preferences,
+                    'essentials'    => $request->essentials,
+                    'inspection_note' => $request->inspection_note ?? '',
+                    'created_at'    => date('Y-m-d H:i:s'),
+                    'updated_at'    => date('Y-m-d H:i:s')
+                ]);
+            }
+
             $data = [
                 "is_verifiable" => !empty($request->status) ? $request->status : 0,
                 "issues_in_verification"    => !empty($request->issue) ? $request->issue : '',
@@ -966,7 +989,7 @@ class PropertyController extends Controller
         if ($property) {
             //check is he authorized to edit this property
             $l_user = JWTAuth::user();
-            if ($l_user->id !== $property->posted_by) {
+            if ($l_user->id !== $property->posted_by && $property->ibo !== $l_user->id) {
                 $pv = DB::table('property_verifications')->where("property_id", $property->id)->where("ibo_id", $l_user->id)->first();
                 if ($pv) {
                     if ($pv->property_id !== $property->id || $pv->status !== 'accepted') {
