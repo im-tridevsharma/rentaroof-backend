@@ -489,6 +489,18 @@ class AuthController extends Controller
 
                 DB::table('user_referral_points')->insert($sdata);
 
+                try {
+                    //add amount to wallet
+                    $wallet = Wallet::where("user_id", $refuser->id)->first();
+                    $wallet->amount += floatval($spoints);
+                    $wallet->credit += floatval($spoints);
+                    $wallet->last_credit_transaction = date('Y-m-d H:i:s');
+                    $wallet->last_transaction_type = 'credit';
+                    $wallet->save();
+                } catch (Exception $e) {
+                    //
+                }
+
                 //point data
                 $rdata = [
                     "user_id"   => $user->id,
@@ -504,6 +516,18 @@ class AuthController extends Controller
                 ];
 
                 DB::table('user_referral_points')->insert($rdata);
+
+                try {
+                    //add amount to wallet
+                    $wallet = Wallet::where("user_id", $user->id)->first();
+                    $wallet->amount += floatval($spoints);
+                    $wallet->credit += floatval($spoints);
+                    $wallet->last_credit_transaction = date('Y-m-d H:i:s');
+                    $wallet->last_transaction_type = 'credit';
+                    $wallet->save();
+                } catch (Exception $e) {
+                    //
+                }
             }
         }
     }

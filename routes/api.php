@@ -252,6 +252,8 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::post("settings/account_status/{id}", [SettingController::class, 'change_account_status']);
     //properties
     Route::get('deals', [UserController::class, 'getDeals']);
+    //payout request
+    Route::get('payout/request', [UserController::class, 'requestWidthraw']);
     Route::post('deals/property', [PropertyController::class, 'dealableProperty']);
     Route::get('properties/visited', [PropertyController::class, 'visitedProperties']);
     Route::get("properties/closed/{code}", [PropertyController::class, 'closeProperty']);

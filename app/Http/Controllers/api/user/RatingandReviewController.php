@@ -5,6 +5,8 @@ namespace App\Http\Controllers\api\user;
 use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\PropertyRatingAndReview;
+use App\Models\Wallet;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -80,6 +82,18 @@ class RatingandReviewController extends Controller
                     ];
 
                     DB::table('user_referral_points')->insert($pdata);
+
+                    try {
+                        //add amount to wallet
+                        $wallet = Wallet::where("user_id", $user->id)->first();
+                        $wallet->amount += floatval($points);
+                        $wallet->credit += floatval($points);
+                        $wallet->last_credit_transaction = date('Y-m-d H:i:s');
+                        $wallet->last_transaction_type = 'credit';
+                        $wallet->save();
+                    } catch (Exception $e) {
+                        //
+                    }
                 }
 
                 return response([

@@ -24,6 +24,7 @@ use App\Models\PropertyRatingAndReview;
 use App\Models\TenantNotification;
 use App\Models\User;
 use App\Models\UserSavedProperty;
+use App\Models\Wallet;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -197,6 +198,18 @@ class PropertyController extends Controller
                 ];
 
                 DB::table('user_referral_points')->insert($sdata);
+
+                try {
+                    //add amount to wallet
+                    $wallet = Wallet::where("user_id", $ibo->id)->first();
+                    $wallet->amount += floatval($spoints);
+                    $wallet->credit += floatval($spoints);
+                    $wallet->last_credit_transaction = date('Y-m-d H:i:s');
+                    $wallet->last_transaction_type = 'credit';
+                    $wallet->save();
+                } catch (Exception $e) {
+                    //
+                }
 
                 //notification to ibo
                 $ibo_notify = new IboNotification;
@@ -1619,6 +1632,18 @@ class PropertyController extends Controller
                             "created_at"  => date("Y-m-d H:i:s"),
                             "updated_at"  => date("Y-m-d H:i:s")
                         ]);
+
+                        try {
+                            //add amount to wallet
+                            $wallet = Wallet::where("user_id", $ruser->id)->first();
+                            $wallet->amount += floatval($spoints);
+                            $wallet->credit += floatval($spoints);
+                            $wallet->last_credit_transaction = date('Y-m-d H:i:s');
+                            $wallet->last_transaction_type = 'credit';
+                            $wallet->save();
+                        } catch (Exception $e) {
+                            //
+                        }
                     }
                 }
 

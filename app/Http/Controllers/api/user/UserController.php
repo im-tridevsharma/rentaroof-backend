@@ -14,7 +14,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 use App\Models\User;
+use App\Models\Wallet;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -750,5 +753,52 @@ class UserController extends Controller
             'message'   => 'Landlords fetched successfully.',
             'data'      => $landlords
         ], 200);
+    }
+
+    //request for widthraw
+    public function requestWidthraw()
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            try {
+
+                //if wallet has amount
+                $wallet = Wallet::where("user_id", $user->id)->first();
+                if ($wallet && $wallet->amount <= 0) {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'You have insufficient balance to widthraw.'
+                    ], 400);
+                }
+
+                $is_requested = DB::table('wallet_payouts')->where("user_id", $user->id)
+                    ->where("role", $user->role)->where("transaction_status", "pending")
+                    ->latest()->first();
+
+                if ($is_requested) {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'Already generated a request for widthrawal.'
+                    ], 400);
+                }
+
+                DB::table('wallet_payouts')->insert([
+                    'user_id'   => $user->id,
+                    'role'      => $user->role,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Widthraw request sent successfully.'
+                ], 200);
+            } catch (Exception $e) {
+                return response([
+                    'status'    => false,
+                    'message'   => $e->getMessage()
+                ], 500);
+            }
+        }
     }
 }
