@@ -417,4 +417,101 @@ class UserManagement extends Controller
             ], 422);
         }
     }
+
+    //wallet_payout
+    public function wallet_payout()
+    {
+        $requests = DB::table('wallet_payouts')->orderBy('id', 'desc')->get()->map(function ($q) {
+            $user = User::find($q->user_id);
+            $q->name = $user->first . ' ' . $user->last;
+            $q->email = $user->email;
+            return $q;
+        });
+        return response([
+            'status'    => true,
+            'message'   => 'Payouts fetched successfully.',
+            'data'      => $requests
+        ]);
+    }
+
+    public function view_wallet_payout($id)
+    {
+        $request = DB::table('wallet_payouts')->where("id", $id)->first();
+
+        $user = User::find($request->user_id);
+        $request->name = $user->first . ' ' . $user->last;
+        $request->email = $user->email;
+
+        $wallet = Wallet::where("user_id", $user->id)->first();
+        $request->wallet = $wallet;
+
+        return response([
+            'status'    => true,
+            'message'   => 'Payout fetched successfully.',
+            'data'      => $request
+        ], 200);
+    }
+
+    public function release_payout(Request $request, $id)
+    {
+        $amount = $request->amount ?? 0;
+        $txn = $request->transaction_id ?? '';
+        $txn_status = $request->transaction_status ?? 'pending';
+
+        if ($amount && $txn) {
+            $payout = DB::table('wallet_payouts')->where("id", $id)->first();
+            $wallet = Wallet::where("user_id", $payout->user_id)->first();
+
+            if ($payout && $wallet) {
+                if ($wallet->amount < $amount) {
+                    return response([
+                        'status'    => false,
+                        'message'   => 'Insufficient amount is available.'
+                    ], 200);
+                }
+
+                //update payout
+                DB::table('wallet_payouts')->where("id", $id)->update([
+                    'payout_status' => $txn_status === 'paid' ? 'paid' : 'accepted',
+                    'transaction_id' => $txn,
+                    'transaction_status' => $txn_status,
+                    'payout_amount' => $amount
+                ]);
+
+                //if success
+                if ($txn_status === 'paid') {
+                    $wallet->amount -= floatval($amount);
+                    $wallet->debit += floatval($amount);
+                    $wallet->save();
+                }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Payout Done',
+                ], 200);
+            } else {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Payout request is not valid.'
+                ], 200);
+            }
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Amount is not valid.'
+            ], 200);
+        }
+    }
+
+    public function delete_wallet_payout($id)
+    {
+        $req = DB::table('wallet_payouts')->where("id", $id)->first();
+        DB::table('wallet_payouts')->where("id", $id)->delete();
+
+        return response([
+            'status'    => true,
+            'message'   => 'Payout deleted successfully.',
+            'data'      => $req
+        ]);
+    }
 }

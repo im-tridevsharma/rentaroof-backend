@@ -123,6 +123,10 @@ class AuthController extends Controller
             $credentials['email'] = $request->email;
         }
 
+        if ($request->mode && $request->mode == 'admin') {
+            $credentials['role'] = 'admin';
+        }
+
         $user = $isMobileUser ? User::where("mobile", $request->email)->first() : User::where("email", $request->email)->first();
         if ($user && $user->account_status === 'banned') {
             return response([
@@ -211,6 +215,7 @@ class AuthController extends Controller
             'deactivate_reason' => $user->deactivate_reason,
             'is_property_updated' => $is_property_updated
         ];
+
         return $this->respondWithToken($token, $info);
     }
 

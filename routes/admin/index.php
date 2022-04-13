@@ -104,6 +104,10 @@ Route::get('users/total', [UserManagement::class, 'total'])->middleware('admin')
 Route::get('users/ban/{id}', [UserManagement::class, 'ban'])->middleware('admin');
 Route::get('users/activate/{id}', [UserManagement::class, 'activate'])->middleware('admin');
 Route::get('users/tracking', [UserManagement::class, 'users_for_tracking'])->middleware('admin');
+Route::get('payouts/wallet', [UserManagement::class, 'wallet_payout'])->middleware('admin');
+Route::get('payouts/wallet/{id}', [UserManagement::class, 'view_wallet_payout'])->middleware('admin');
+Route::delete('payouts/wallet/{id}', [UserManagement::class, 'delete_wallet_payout'])->middleware('admin');
+Route::post('payouts/wallet/release/{id}', [UserManagement::class, 'release_payout'])->middleware('admin');
 Route::resource('users', UserManagement::class)->middleware('admin');
 //manage ibos
 Route::get('ibos/total', [IBOManagement::class, 'total'])->middleware('admin');
