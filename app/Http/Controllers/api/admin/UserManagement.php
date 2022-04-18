@@ -5,6 +5,8 @@ namespace App\Http\Controllers\api\admin;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Country;
+use App\Models\IboEarning;
+use App\Models\LandlordEarning;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -507,6 +509,111 @@ class UserManagement extends Controller
     {
         $req = DB::table('wallet_payouts')->where("id", $id)->first();
         DB::table('wallet_payouts')->where("id", $id)->delete();
+
+        return response([
+            'status'    => true,
+            'message'   => 'Payout deleted successfully.',
+            'data'      => $req
+        ]);
+    }
+
+    //wallet_payout
+    public function earning_payout()
+    {
+        $requests = DB::table('earning_payouts')->orderBy('id', 'desc')->get()->map(function ($q) {
+            $user = User::find($q->user_id);
+            $q->name = $user->first . ' ' . $user->last;
+            $q->email = $user->email;
+            return $q;
+        });
+        return response([
+            'status'    => true,
+            'message'   => 'Payouts fetched successfully.',
+            'data'      => $requests
+        ]);
+    }
+
+    public function view_earning_payout($id)
+    {
+        $request = DB::table('earning_payouts')->where("id", $id)->first();
+
+        $user = User::find($request->user_id);
+        $request->name = $user->first . ' ' . $user->last;
+        $request->email = $user->email;
+        if ($user->role === 'ibo') {
+            $earning = IboEarning::where("ibo_id", $user->id)->get();
+        } else {
+            $earning = LandlordEarning::where("landlord_id", $user->id)->get();
+        }
+
+        $request->earning = $earning;
+
+        return response([
+            'status'    => true,
+            'message'   => 'Payout fetched successfully.',
+            'data'      => $request
+        ], 200);
+    }
+
+    public function release_earning_payout(Request $request, $id)
+    {
+        $amount = $request->amount ?? 0;
+        $txn = $request->transaction_id ?? '';
+        $txn_status = $request->transaction_status ?? 'pending';
+
+        if ($request->earnings && $txn) {
+            $payout = DB::table('earning_payouts')->where("id", $id)->first();
+            if ($request->earnings && count($request->earnings) > 0) {
+                foreach ($request->earnings as $e) {
+                    if ($payout) {
+                        if ($payout->role === 'ibo') {
+                            $e = IboEarning::find($e);
+                        } else {
+                            $e = LandlordEarning::find($e);
+                        }
+                        //update payout
+                        DB::table('earning_payouts')->where("id", $id)->update([
+                            'payout_status' => $txn_status === 'paid' ? 'paid' : 'accepted',
+                            'transaction_id' => $txn,
+                            'transaction_status' => $txn_status,
+                            'payout_amount' => $amount
+                        ]);
+
+                        //if success
+                        if ($txn_status === 'paid') {
+                            $e->type = 'paid';
+                            $e->save();
+                        }
+                    } else {
+                        return response([
+                            'status'    => false,
+                            'message'   => 'Payout request is not valid.'
+                        ], 200);
+                    }
+                }
+
+                return response([
+                    'status'    => true,
+                    'message'   => 'Payout Done',
+                ], 200);
+            } else {
+                return response([
+                    'status'    => false,
+                    'message'   => 'Please select earnings.'
+                ], 400);
+            }
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'Amount is not valid.'
+            ], 200);
+        }
+    }
+
+    public function delete_earning_payout($id)
+    {
+        $req = DB::table('earning_payouts')->where("id", $id)->first();
+        DB::table('earning_payouts')->where("id", $id)->delete();
 
         return response([
             'status'    => true,

@@ -1596,7 +1596,8 @@ class PropertyController extends Controller
                             $earning->agreement_id = $agreement->id;
                             $earning->amount_percentage = $ibo->split_percent ?? 0;
                             $earning->amount = $agreement->fee_amount * $percent / 100;
-
+                            $earning->date = date('Y-m-d');
+                            $earning->type = 'payout_pending';
                             $earning->save();
 
                             //mark as paid
