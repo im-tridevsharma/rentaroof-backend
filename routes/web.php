@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::get('/', function () {
-    return time();
+    return 'Curret Time'. time();
 });
 
 Route::get('/cron/check-for-appointment', [CronJobController::class, '_check_for_appointment']);
