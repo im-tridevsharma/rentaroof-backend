@@ -135,6 +135,8 @@ Route::resource('amenities', AmenityManagement::class)->middleware('admin');
 //manage preferences
 Route::resource('preferences', PreferenceManagement::class)->middleware('admin');
 //manage properties
+Route::get('properties/queries', [PropertyManagement::class, 'property_query'])->middleware('admin');
+Route::delete('properties/queries/{id}', [PropertyManagement::class, 'delete_property_query'])->middleware('admin');
 Route::post('properties/bulk_action', [PropertyManagement::class, 'bulk_action'])->middleware('admin');
 Route::post('properties/bulk_import', [BulkPropertyImport::class, 'importFromExcel'])->middleware('admin');
 Route::post('properties/verification/{id}', [PropertyManagement::class, 'verification'])->middleware('admin');

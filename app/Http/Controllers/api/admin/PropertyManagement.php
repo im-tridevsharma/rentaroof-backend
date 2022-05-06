@@ -53,6 +53,35 @@ class PropertyManagement extends Controller
         //
     }
 
+    public function property_query()
+    {
+        $quiries = DB::table('property_requirements')->orderBy("id", "desc")->get();
+        return response([
+            'status'    => true,
+            'message'   => 'Property Quiries fetched successfully.',
+            'data'      => $quiries
+        ]);
+    }
+
+
+    public function delete_property_query($id)
+    {
+        $query = DB::table("property_requirements")->where("id", $id)->first();
+        if ($query) {
+            DB::table("property_requirements")->where("id", $id)->delete();
+            return response([
+                'status'    => true,
+                'message'   => 'Query deleted successfully.',
+                'id'        => $id
+            ], 200);
+        }
+
+        return response([
+            'status'    => false,
+            'message'   => 'Query not found!'
+        ],  404);
+    }
+
     /**
      * Display the specified resource.
      *

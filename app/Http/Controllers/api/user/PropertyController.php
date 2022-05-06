@@ -65,6 +65,51 @@ class PropertyController extends Controller
         ], 500);
     }
 
+
+    public function save_requirement(Request $request)
+    {
+        $validator = Validator::make($request->input(), [
+            'name'  => 'required',
+            'email' => 'required',
+            'mobile' => 'required',
+            'location' => 'required',
+            'property_type' => 'required',
+            'society_name' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response([
+                'status'    => false,
+                'message'   => 'Please fill all the information.'
+            ], 422);
+        }
+
+        //save information
+        try {
+            DB::table('property_requirements')->insert([
+                'name'  => $request->name,
+                'email' => $request->email,
+                'mobile' => $request->mobile,
+                'location' => $request->location,
+                'society_name' => $request->society_name,
+                'property_type' => $request->property_type,
+                'message' => $request->message,
+                'created_at'    => date('Y-m-d H:i:s'),
+                'updated_at'    => date('Y-m-d H:i:s'),
+            ]);
+
+            return response([
+                'status'    => true,
+                'message'   => 'ok'
+            ], 200);
+        } catch (Exception $e) {
+            return response([
+                'status'    => false,
+                'message'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
     //get total properties of a user
     public function total(Request $request)
     {
