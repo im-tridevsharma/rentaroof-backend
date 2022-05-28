@@ -2023,7 +2023,7 @@ class PropertyController extends Controller
             ->whereIn('id', $ids)->get([
                 'id', 'name', 'property_code', 'front_image',
                 'posted_by', 'type', 'monthly_rent', 'available_immediately',
-                'city_name', 'state_name', 'carpet_area', 'carpet_area_unit'
+                'city_name', 'state_name', 'carpet_area', 'carpet_area_unit', 'bedrooms', 'bathrooms', 'super_area'
             ]);
 
         return response([
