@@ -43,7 +43,7 @@ function sms($message = "", $num = "")
         return false;
     } else {
         $response = json_decode($response);
-        if ($response->return) {
+        if (isset($response->return) && $response->return) {
             return $response->request_id;
         } else {
             return false;

@@ -142,6 +142,7 @@ class PropertyManagement extends Controller
             if ($request->status == 'verify') {
                 $property->verified_at = date("Y-m-d H:i:s");
             }
+
             if ($property->save()) {
                 return response([
                     'status'    => true,
