@@ -783,22 +783,22 @@ class PropertyController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name'  => 'required|string|between:2,100',
-            'short_description' => 'required|string|max:255',
-            'for'   => 'required|in:rent',
-            'type'  => 'required',
-            'posting_as'    => 'required',
-            'ownership_type'    => 'required',
+            // 'short_description' => 'required|string|max:255',
+            // 'for'   => 'required|in:rent',
+            // 'type'  => 'required',
+            // 'posting_as'    => 'required',
+            // 'ownership_type'    => 'required',
             'furnished_status'  => 'required',
             'bedrooms'  => 'required',
             'balconies' => 'required',
             'floors'    => 'required',
             'bathrooms' => 'required',
-            'super_area'    => 'required',
-            'super_area_unit'   => 'required',
-            'available_from'    => 'required',
-            'monthly_rent'      => 'required',
-            'security_amount'   => 'required',
-            'age_of_construction'   => 'required'
+            // 'super_area'    => 'required',
+            // 'super_area_unit'   => 'required',
+            // 'available_from'    => 'required',
+            // 'monthly_rent'      => 'required',
+            // 'security_amount'   => 'required',
+            // 'age_of_construction'   => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -838,6 +838,9 @@ class PropertyController extends Controller
         }
 
         $property = new Property($request->input());
+        $property->for = 'rent';
+        $property->type = "";
+
 
         $property->property_code = 'RARP-0' . rand(11111, 99999) . '0';
         if (JWTAuth::user()->role === 'ibo') {
@@ -849,6 +852,12 @@ class PropertyController extends Controller
         }
         if (isset($request->custom_bedrooms) && !empty($request->custom_bedrooms)) {
             $property->bedrooms = $request->custom_bedrooms;
+        }
+
+        if (isset($request->available_from) && !empty($request->available_from)) {
+            $property->available_from = date('Y-m-d', strtotime($request->available_from));
+        } else {
+            $property->available_from = NULL;
         }
 
         if (isset($request->offered_price) && !empty($request->offered_price)) {
