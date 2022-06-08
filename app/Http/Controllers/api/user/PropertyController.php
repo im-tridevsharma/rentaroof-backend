@@ -552,9 +552,36 @@ class PropertyController extends Controller
         ], 404);
     }
 
+    public function content_read($url)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_URL, $url);
+        $result = curl_exec($ch);
+        curl_close($ch);
+
+        return $result;
+    }
+
     //search properties
     public function search(Request $request)
     {
+        $address = str_replace(" ", "+", "$request->search");
+        $map_where = 'https://maps.google.com/maps/api/geocode/json?key=' . env('MAP_API_KEY') . '&address=' . $address . '&sensor=false';
+        $geocode = $this->content_read($map_where);
+        $json = json_decode($geocode);
+
+        $data = [];
+
+        if ($json->{'results'}) {
+            $data['lat'] = isset($json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'}) ? $json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'} : 0;
+            $data['long'] = isset($json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'}) ? $json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'} : 0;
+        } else {
+            $data['lat'] = 0;
+            $data['long'] = 0;
+        }
+
         $locations = Address::where(function ($q) use ($request) {
 
             if (!empty($request->state)) {
@@ -562,62 +589,65 @@ class PropertyController extends Controller
                 $q->where("state", "like", "%" . $state . "%");
             }
 
-            if (!empty($request->city)) {
-                $city = $request->city ?? '';
-                $q->orWhere("city", "like", "%" . $city . "%");
-            }
+            // if (!empty($request->city)) {
+            //     $city = $request->city ?? '';
+            //     $q->orWhere("city", "like", "%" . $city . "%");
+            // }
 
-            if (!empty($request->zone)) {
-                $zone = $request->zone ?? '';
-                $q->orWhere("zone", "like", "%" . $zone . "%");
-            }
+            // if (!empty($request->zone)) {
+            //     $zone = $request->zone ?? '';
+            //     $q->orWhere("zone", "like", "%" . $zone . "%");
+            // }
 
-            if (!empty($request->area)) {
-                $area = $request->area ?? '';
-                $q->orWhere("area", "like", "%" . $area . "%");
-            }
+            // if (!empty($request->area)) {
+            //     $area = $request->area ?? '';
+            //     $q->orWhere("area", "like", "%" . $area . "%");
+            // }
 
-            if (!empty($request->sub_area)) {
-                $sub_area = $request->sub_area ?? '';
-                $q->orWhere("sub_area", "like", "%" . $sub_area . "%");
-            }
+            // if (!empty($request->sub_area)) {
+            //     $sub_area = $request->sub_area ?? '';
+            //     $q->orWhere("sub_area", "like", "%" . $sub_area . "%");
+            // }
 
-            if (!empty($request->route)) {
-                $route = $request->route ?? '';
-                $q->orWhere("route", "like", "%" . $route . "%");
-            }
+            // if (!empty($request->route)) {
+            //     $route = $request->route ?? '';
+            //     $q->orWhere("route", "like", "%" . $route . "%");
+            // }
 
-            if (!empty($request->pincode)) {
-                $pincode = $request->pincode ?? '';
-                $q->orWhere("pincode", "like", "%" . $pincode . "%");
-            }
+            // if (!empty($request->pincode)) {
+            //     $pincode = $request->pincode ?? '';
+            //     $q->orWhere("pincode", "like", "%" . $pincode . "%");
+            // }
         });
 
-        if (!empty($request->search_radius)) {
+
+
+        if ($data['lat'] && $data['long']) {
             //search radius
-            $latitude = $request->lat ?? 0;
-            $longitude = $request->lng ?? 0;
+            $latitude = $data['lat']; //$request->lat ?? 0;
+            $longitude = $data['long']; //$request->lng ?? 0;
 
             $address_within_radius = DB::table("addresses")
                 ->select("id", DB::raw("6371 * acos(cos(radians(" . $latitude . "))
                 * cos(radians(lat)) * cos(radians(`long`) - radians(" . $longitude . "))
                 + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
-                ->having('distance', '<', $request->search_radius ?? 5)
+                ->having('distance', '<', $request->search_radius ?? 0.2)
                 ->orderBy('distance', 'asc')->distinct()->pluck('id')->toArray();
 
-            $locations->whereIn("id", $address_within_radius);
+            if (count($address_within_radius) > 0) {
+                $locations->whereIn("id", $address_within_radius);
+                $locations = $locations->pluck('id')->toArray();
+            } else {
+                $locations = [];
+            }
+        } else {
+            $locations = [];
         }
 
-        $locations = $locations->pluck('id')->toArray();
 
         $properties = Property::where("is_approved", 1)
             ->where('is_closed', 0)
-            ->where(function ($query) use ($request) {
-                if ($request->has('search') && !empty($request->search)) {
-                    // $query->orWhere("name", "like", "%" . $request->search . "%");
-                    // $query->orWhere("property_code", "like", "%" . $request->search . "%");
-                }
-            })->where(function ($q) use ($request, $locations) {
+            ->where(function ($q) use ($request, $locations) {
                 if ($request->has('posted_by') && !empty($request->posted_by)) {
                     $q->where("posted_by", $request->posted_by);
                 }
@@ -669,13 +699,7 @@ class PropertyController extends Controller
                     $q->whereDate("available_from", "<=", date("Y-m-d", strtotime($request->available_to)));
                 }
 
-                if (
-                    $request->state || $request->city || $request->area ||
-                    $request->sub_area || $request->zone || $request->pincode
-                    || $request->route
-                ) {
-                    $q->whereIn("address_id", $locations);
-                }
+                $q->whereIn("address_id", $locations);
             })->with("address");
 
         if ($request->has("sorting")) {
@@ -683,7 +707,7 @@ class PropertyController extends Controller
         }
 
         if ($request->has("pagination") && $request->pagination === 'yes') {
-            $properties = $properties->paginate(5);
+            $properties = $properties->paginate(50);
         } else {
             $properties = $properties->get();
         }
