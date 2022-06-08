@@ -1107,11 +1107,11 @@ class PropertyController extends Controller
 
             $property->name = $request->name;
             $property->short_description = $request->short_description;
-            $property->for = $request->for;
-            $property->type = $request->type;
-            $property->posting_as = $request->posting_as;
-            $property->ownership_type = $request->ownership_type;
-            $property->furnished_status = $request->furnished_status;
+            $property->for = 'rent';
+            $property->type = $request->type ?? '';
+            $property->posting_as = $request->posting_as ?? '';
+            $property->ownership_type = $request->ownership_type ?? '';
+            $property->furnished_status = $request->furnished_status ?? '';
             $property->bedrooms = $request->bedrooms;
             $property->balconies = $request->balconies;
             $property->floors = $request->floors;
