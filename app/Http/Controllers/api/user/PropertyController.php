@@ -1050,22 +1050,22 @@ class PropertyController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name'  => 'required|string|between:2,100',
-            'short_description' => 'required|string|max:255',
-            'for'   => 'required|in:rent',
-            'type'  => 'required',
-            'posting_as'    => 'required',
-            'ownership_type'    => 'required',
+            // 'short_description' => 'required|string|max:255',
+            // 'for'   => 'required|in:rent',
+            // 'type'  => 'required',
+            // 'posting_as'    => 'required',
+            // 'ownership_type'    => 'required',
             'furnished_status'  => 'required',
             'bedrooms'  => 'required',
             'balconies' => 'required',
             'floors'    => 'required',
             'bathrooms' => 'required',
-            'super_area'    => 'required',
-            'super_area_unit'   => 'required',
-            'available_from'    => 'required',
-            'monthly_rent'      => 'required',
-            'security_amount'   => 'required',
-            'age_of_construction'   => 'required'
+            // 'super_area'    => 'required',
+            // 'super_area_unit'   => 'required',
+            // 'available_from'    => 'required',
+            // 'monthly_rent'      => 'required',
+            // 'security_amount'   => 'required',
+            // 'age_of_construction'   => 'required'
         ]);
 
         if ($validator->fails()) {
