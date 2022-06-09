@@ -39,13 +39,22 @@ class PropertyController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = JWTAuth::user();
         if ($user->role !== 'ibo') {
-            $properties = Property::where("posted_by", $user->id)->get();
+            $properties = Property::where("posted_by", $user->id)->orderBy('id', 'desc')
+                ->limit(9);
+            if ($request->skip) {
+                $properties->skip($request->skip);
+            }
+            $properties = $properties->get();
         } else {
-            $properties = Property::where("ibo", $user->id)->get()->map(function ($q) {
+            $properties = Property::where("ibo", $user->id)->limit(9)->orderBy('id', 'desc');
+            if ($request->skip) {
+                $properties->skip($request->skip);
+            }
+            $properties = $properties->get()->map(function ($q) {
                 $owner = User::find($q->landlord);
                 $q->owner = $owner ? $owner->first . ' ' . $owner->last : '';
                 return $q;
@@ -55,7 +64,8 @@ class PropertyController extends Controller
             return response([
                 'status'    => true,
                 'message'   => 'Properties fetched successfully.',
-                'data'      => $properties
+                'data'      => $properties,
+                'total'     => $this->total_count()
             ], 200);
         }
 
@@ -65,6 +75,19 @@ class PropertyController extends Controller
         ], 500);
     }
 
+
+    public function total_count()
+    {
+        $user = JWTAuth::user();
+        $count = 0;
+        if ($user->role !== 'ibo') {
+            $count = Property::where("posted_by", $user->id)->count();
+        } else {
+            $count = Property::where("ibo", $user->id)->count();
+        }
+
+        return $count;
+    }
 
     public function save_requirement(Request $request)
     {
@@ -706,11 +729,12 @@ class PropertyController extends Controller
             $properties = $request->sorting == 'newest' ? $properties->orderBy("created_at", "desc") : $properties->orderBy("created_at", "asc");
         }
 
-        if ($request->has("pagination") && $request->pagination === 'yes') {
-            $properties = $properties->paginate(50);
-        } else {
-            $properties = $properties->get();
+        $total = $properties->count();
+
+        if ($request->skip) {
+            $properties->skip($request->skip);
         }
+        $properties = $properties->limit(10)->get();
 
         //loggedin user
         $user = JWTAuth::user();
@@ -737,7 +761,8 @@ class PropertyController extends Controller
         return response([
             'status'    => true,
             'message'   => 'Properties searched successfully.',
-            'data'      => $properties
+            'data'      => $properties,
+            'total'     => $total
         ], 200);
     }
 
