@@ -734,6 +734,7 @@ class PropertyController extends Controller
         if ($request->skip) {
             $properties->skip($request->skip);
         }
+
         $properties = $properties->limit(10)->get();
 
         //loggedin user
