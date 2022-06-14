@@ -447,7 +447,7 @@ class PropertyController extends Controller
                 + sin(radians(" . $latitude . ")) * sin(radians(lat))) AS distance"))
                 ->join('users', 'users.id', '=', 'addresses.user_id')
                 ->where('users.role', '=', 'ibo')
-                ->having('distance', '<', env('ASSIGN_DISTANCE'))
+                ->having('distance', '<', env('ASSIGN_DISTANCE', 30))
                 ->orderBy('distance', 'asc')->distinct()
                 ->where("user_id", "!=", NULL)->get();
 
