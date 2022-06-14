@@ -597,7 +597,7 @@ class PropertyController extends Controller
 
         $data = [];
 
-        if ($json->{'results'}) {
+        if ($json && $json->{'results'}) {
             $data['lat'] = isset($json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'}) ? $json->{'results'}[0]->{'geometry'}->{'location'}->{'lat'} : 0;
             $data['long'] = isset($json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'}) ? $json->{'results'}[0]->{'geometry'}->{'location'}->{'lng'} : 0;
         } else {
@@ -664,7 +664,7 @@ class PropertyController extends Controller
                 $locations = [];
             }
         } else {
-            $locations = [];
+            $locations = $locations->pluck('id')->toArray();
         }
 
 
