@@ -1741,11 +1741,15 @@ class PropertyController extends Controller
                         try {
                             //add amount to wallet
                             $wallet = Wallet::where("user_id", $ruser->id)->first();
-                            $wallet->amount += floatval($spoints);
-                            $wallet->credit += floatval($spoints);
-                            $wallet->last_credit_transaction = date('Y-m-d H:i:s');
-                            $wallet->last_transaction_type = 'credit';
-                            $wallet->save();
+                            $wallet = $wallet ? $wallet : new Wallet;
+                            if ($wallet) {
+                                $wallet->user_id = $ruser->id;
+                                $wallet->amount += floatval($spoints);
+                                $wallet->credit += floatval($spoints);
+                                $wallet->last_credit_transaction = date('Y-m-d H:i:s');
+                                $wallet->last_transaction_type = 'credit';
+                                $wallet->save();
+                            }
                         } catch (Exception $e) {
                             //
                         }

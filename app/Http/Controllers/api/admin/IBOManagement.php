@@ -4,6 +4,8 @@ namespace App\Http\Controllers\api\admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\Agreement;
+use App\Models\Property;
 use App\Models\IboRating;
 use App\Models\KycVerification;
 use Illuminate\Http\Request;
@@ -11,7 +13,6 @@ use Illuminate\Support\Facades\Validator;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class IBOManagement extends Controller
 {
@@ -38,11 +39,30 @@ class IBOManagement extends Controller
     public function total()
     {
         $total = User::where("role", "ibo")->count();
+        $rented = Agreement::where("property_id", "!=", null)->count();
+
+        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        $properties_data = [
+            "verified" => [],
+            "notverified" => []
+        ];
+
+        foreach ($months as $m) {
+            $vcount = Property::where("is_approved", 1)->whereMonth("created_at", date('m', strtotime($m)))->count();
+            $properties_data['verified'][$m] = $vcount;
+            $nvcount = Property::where("is_approved", 0)->whereMonth("created_at", date('m', strtotime($m)))->count();
+            $properties_data['notverified'][$m] = $nvcount;
+        }
+
         if ($total >= 0) {
             return response([
                 "status"    => true,
                 "message"   => "Feteched successfully.",
-                "data"      => $total
+                "data"      => [
+                    "ibos" => $total,
+                    "rented" => $rented,
+                    "properties_stat" => $properties_data
+                ]
             ], 200);
         }
 

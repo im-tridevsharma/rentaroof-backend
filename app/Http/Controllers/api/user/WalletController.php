@@ -9,8 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
-use function React\Promise\Stream\first;
-
 class WalletController extends Controller
 {
     public function getWallet()
@@ -19,11 +17,16 @@ class WalletController extends Controller
         if ($user) {
 
             $wallet = Wallet::where("user_id", $user->id)->first();
+            $wallet = $wallet ? $wallet : new Wallet;
+            $wallet->user_id = $user->id;
+            $wallet->save();
 
-            $wallet->payout = DB::table('wallet_payouts')
-                ->where("user_id", $user->id)
-                ->where("transaction_status", "paid")
-                ->sum('payout_amount');
+            if ($wallet) {
+                $wallet->payout = DB::table('wallet_payouts')
+                    ->where("user_id", $user->id)
+                    ->where("transaction_status", "paid")
+                    ->sum('payout_amount');
+            }
 
             if ($wallet) {
                 return response([
