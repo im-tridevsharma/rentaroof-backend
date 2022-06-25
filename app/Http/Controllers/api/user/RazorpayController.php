@@ -312,6 +312,7 @@ class RazorpayController extends Controller
                 'status'    => true,
                 'message'   => 'Transactions fetched successfully.',
                 'data'      => $txns,
+                'paid'      => number_format(Transaction::where("paid", "!=", "")->selectRaw("SUM(amount) as total")->first()->total ?? 0, 2, '.', ',')
             ]);
         }
 

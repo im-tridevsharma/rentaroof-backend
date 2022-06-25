@@ -20,7 +20,7 @@ class Enquiry extends Controller
 {
     public function __construct()
     {
-        $this->middleware('jwt.verify', ['except' => ['store','findAnAgent']]);
+        $this->middleware('jwt.verify', ['except' => ['store', 'findAnAgent']]);
     }
     /**
      * Display a listing of the resource.
@@ -214,49 +214,49 @@ class Enquiry extends Controller
     //fina an agent
     public function findAnAgent(Request $request)
     {
-        if($request->has('search')){
+        if ($request->has('search')) {
 
-            $country_ids = Country::where(function($q) use($request) {
-                $q->orWhere("name", "like", "%".$request->search."%");
+            $country_ids = Country::where(function ($q) use ($request) {
+                $q->orWhere("name", "like", "%" . $request->search . "%");
             })->pluck('id')->toArray();
 
-            $state_ids = State::where(function($q) use($request) {
-                $q->orWhere("name", "like", "%".$request->search."%");
+            $state_ids = State::where(function ($q) use ($request) {
+                $q->orWhere("name", "like", "%" . $request->search . "%");
             })->pluck('id')->toArray();
 
-            $city_ids = City::where(function($q) use($request) {
-                $q->orWhere("name", "like", "%".$request->search."%");
+            $city_ids = City::where(function ($q) use ($request) {
+                $q->orWhere("name", "like", "%" . $request->search . "%");
             })->pluck('id')->toArray();
 
-            $address_ids = Address::where(function($q) use($request, $country_ids, $state_ids, $city_ids) {
-                $q->orWhere("landmark", "like", "%".$request->search."%");
-                $q->orWhere("full_address", "like", "%".$request->search."%");
+            $address_ids = Address::where(function ($q) use ($request, $country_ids, $state_ids, $city_ids) {
+                $q->orWhere("landmark", "like", "%" . $request->search . "%");
+                $q->orWhere("full_address", "like", "%" . $request->search . "%");
                 $q->orWhereIn("country", $country_ids);
                 $q->orWhereIn("state", $state_ids);
                 $q->orWhereIn("city", $city_ids);
             })->pluck('id')->toArray();
-            
-            $ibos = User::select(['id','first','last','email','mobile','kyc_id','profile_pic','address_id','is_logged_in','system_userid'])->where("role", "ibo")->where(function($q) use($request, $address_ids) {
-                $q->orWhere("first", "like", "%".$request->search."%");
-                $q->orWhere("last", "like", "%".$request->search."%");
-                $q->orWhere("email", "like", "%".$request->search."%");
-                $q->orWhere("mobile", "like", "%".$request->search."%");
+
+            $ibos = User::select(['id', 'first', 'last', 'email', 'mobile', 'kyc_id', 'profile_pic', 'address_id', 'is_logged_in', 'system_userid'])->where("role", "ibo")->where(function ($q) use ($request, $address_ids) {
+                $q->orWhere("first", "like", "%" . $request->search . "%");
+                $q->orWhere("last", "like", "%" . $request->search . "%");
+                $q->orWhere("email", "like", "%" . $request->search . "%");
+                $q->orWhere("mobile", "like", "%" . $request->search . "%");
                 $q->orWhereIn("address_id", $address_ids);
-            })->get()->map(function($m){
+            })->get()->map(function ($m) {
                 $address = Address::find($m->address_id);
-                if($address){
+                if ($address) {
                     $iboaddress = [
-                        "country" => Country::find($address->country)->name??'',
-                        "state" => State::find($address->state)->name??'',
-                        "city" => City::find($address->city)->name??'',
+                        "country" => Country::find($address->country)->name ?? '',
+                        "state" => State::find($address->state)->name ?? '',
+                        "city" => City::find($address->city)->name ?? '',
                         "full_address"  => $address->full_address,
                         "landmark"      => $address->landmark
                     ];
                     $m->address = $iboaddress;
-                }else{
+                } else {
                     $m->address_id = 0;
                 }
-                
+
                 $m->kyc_id = $m->kyc_id ?? 0;
 
                 return $m;
