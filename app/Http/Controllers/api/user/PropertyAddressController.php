@@ -54,6 +54,18 @@ class PropertyAddressController extends Controller
             ], 400);
         }
 
+        //check for duplicate
+        $is_duplicate = Address::where("area", $request->area)
+            ->orWhere("house_number", $request->house_number)->count();
+
+        if ($is_duplicate) {
+            return response([
+                'status'    => false,
+                'message'   => 'Duplicate details found! Please check your property details.'
+            ], 401);
+        }
+
+
         $address = new Address;
 
         $address->landmark = isset($request->landmark) ? $request->landmark : '';
