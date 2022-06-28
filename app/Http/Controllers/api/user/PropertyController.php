@@ -859,17 +859,6 @@ class PropertyController extends Controller
             ], 400);
         }
 
-        //check for duplicate
-        $is_duplicate = Property::where("name", $request->name)
-            ->orWhere("floors", $request->floors)
-            ->orWhere("monthly_rent", $request->monthly_rent)->count();
-
-        if ($is_duplicate) {
-            return response([
-                'status'    => false,
-                'message'   => 'Duplicate details found! Please check your property details.'
-            ], 401);
-        }
 
 
         //check if user is verified or not

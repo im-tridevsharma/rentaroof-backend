@@ -55,10 +55,13 @@ class PropertyAddressController extends Controller
         }
 
         //check for duplicate
-        $is_duplicate = Address::where("area", $request->area)
-            ->orWhere("house_number", $request->house_number)->count();
+        $is_duplicate_P = Property::where("name", $request->name)
+            ->where("floors", $request->floors)
+            ->where("monthly_rent", $request->monthly_rent)->count();
+        $is_duplicate_A = Address::where("area", $request->area)
+            ->where("house_number", $request->house_number)->count();
 
-        if ($is_duplicate) {
+        if ($is_duplicate_P && $is_duplicate_A) {
             return response([
                 'status'    => false,
                 'message'   => 'Duplicate details found! Please check your property details.'
