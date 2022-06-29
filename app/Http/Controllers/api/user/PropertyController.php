@@ -843,10 +843,10 @@ class PropertyController extends Controller
             'balconies' => 'required',
             'floors'    => 'required',
             'bathrooms' => 'required',
-            // 'super_area'    => 'required',
+            'super_area'    => 'required',
             // 'super_area_unit'   => 'required',
             // 'available_from'    => 'required',
-            // 'monthly_rent'      => 'required',
+            'monthly_rent'      => 'required',
             // 'security_amount'   => 'required',
             // 'age_of_construction'   => 'required'
         ]);
@@ -1088,10 +1088,10 @@ class PropertyController extends Controller
             'balconies' => 'required',
             'floors'    => 'required',
             'bathrooms' => 'required',
-            // 'super_area'    => 'required',
+            'super_area'    => 'required',
             // 'super_area_unit'   => 'required',
             // 'available_from'    => 'required',
-            // 'monthly_rent'      => 'required',
+            'monthly_rent'      => 'required',
             // 'security_amount'   => 'required',
             // 'age_of_construction'   => 'required'
         ]);
