@@ -329,8 +329,10 @@ class RazorpayController extends Controller
 
         if ($property) {
             $txns = Transaction::where("type", "rent")->where(function ($q) use ($property) {
-                $agreement = Agreement::where("property_id", $property->id)->pluck("id")->toArray();
-                $q->whereIn("type_id", $agreement);
+                if ($property) {
+                    $agreement = Agreement::where("property_id", $property->id)->pluck("id")->toArray();
+                    $q->whereIn("type_id", $agreement);
+                }
             });
 
             $txns = $txns->get();
