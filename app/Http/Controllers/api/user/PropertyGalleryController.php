@@ -469,7 +469,7 @@ class PropertyGalleryController extends Controller
 
         if ($gallery->save()) {
 
-            $p->front_image = $property_cover ? $property_cover : $p->front_image;
+            $p->front_image = filter_var($request->cover, FILTER_VALIDATE_URL) ? $request->cover : ($property_cover ? $property_cover : $p->front_image);
             $p->gallery_id = $gallery->id;
             $p->save();
 
