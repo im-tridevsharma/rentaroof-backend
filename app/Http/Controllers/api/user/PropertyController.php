@@ -2087,6 +2087,7 @@ class PropertyController extends Controller
         $ids = DB::table('featured_properties')->pluck('property_id')->toArray();
         $properties = Property::where('is_approved', 1)
             ->where('is_closed', 0)->where('is_deleted', 0)
+            ->limit(12)
             ->whereIn('id', $ids)->get([
                 'id', 'name', 'property_code', 'front_image',
                 'posted_by', 'type', 'monthly_rent', 'available_immediately',
