@@ -193,7 +193,7 @@ Route::group(['middleware' => 'jwt.verify'], function () {
     Route::get('payment/transactions', [RazorpayController::class, 'getAllTransactions']);
     Route::get('payment/recent', [RazorpayController::class, 'getRecentTransactions']);
     Route::get('properties/rent/transactions/{code}', [RazorpayController::class, 'getPropertyRentTxn']);
-
+    Route::get('properties/awaiting', [PropertyController::class, 'getAwaitingClosedDeal']);
     Route::post("properties/appointment/{id}", [PropertyController::class, 'appointment']);
 
     //wallet

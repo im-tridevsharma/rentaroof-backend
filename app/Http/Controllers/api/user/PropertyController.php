@@ -2100,4 +2100,31 @@ class PropertyController extends Controller
             'data'  => $properties
         ], 200);
     }
+
+    public function getAwaitingClosedDeal()
+    {
+        $user = JWTAuth::user();
+        if ($user) {
+            $created_agreement = Agreement::pluck("property_id")->toArray();
+            $properties = Meeting::where("meetings.meeting_status", "closed")
+                ->where("meetings.created_by_id", $user->id)
+                ->join('properties', 'properties.id', '=', 'meetings.property_id')
+                ->whereNotIn('properties.id', $created_agreement)
+                ->get([
+                    'meetings.meeting_status', 'properties.name', 'properties.front_image',
+                    'properties.property_code', 'properties.monthly_rent'
+                ]);
+
+            return response([
+                'status'    => true,
+                'message'   => 'awaiting properties',
+                'data'      => $properties
+            ], 200);
+        } else {
+            return response([
+                'status'    => false,
+                'message'   => 'User not found!'
+            ], 401);
+        }
+    }
 }
