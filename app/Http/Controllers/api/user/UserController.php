@@ -619,10 +619,11 @@ class UserController extends Controller
         }
 
         //register new landlord
+        $user = JWTAuth::user();
 
         $landlord = new User;
         $landlord->system_userid = 'LID-0' . rand(11111, 99999);
-        $landlord->referral_code = JWTAuth::user()->system_userid;
+        $landlord->referral_code = $user->role !== 'admin' ? $user->system_userid : NULL;
         $landlord->role = 'landlord';
         $name = explode(' ', $request->name);
         $landlord->first = $name[0] ?? '';
@@ -746,8 +747,11 @@ class UserController extends Controller
     public function getLandlords()
     {
         $user = JWTAuth::user();
-        $landlords = User::where("role", "landlord")->orderBy("id", "desc")
-            ->where("referral_code", $user->system_userid)->get(['id', 'first', 'last']);
+        $landlords = User::where("role", "landlord")->orderBy("id", "desc");
+        if ($user->role !== 'admin') {
+            $landlords->where("referral_code", $user->system_userid);
+        }
+        $landlords = $landlords->get(['id', 'first', 'last']);
         return response([
             'status'    => true,
             'message'   => 'Landlords fetched successfully.',

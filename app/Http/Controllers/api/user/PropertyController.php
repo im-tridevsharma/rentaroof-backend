@@ -896,7 +896,7 @@ class PropertyController extends Controller
 
 
         $property->property_code = 'RARP-0' . rand(11111, 99999) . '0';
-        if (JWTAuth::user()->role === 'ibo') {
+        if (JWTAuth::user()->role === 'ibo' || JWTAuth::user()->role === 'admin') {
             $property->ibo = JWTAuth::user()->id;
             $property->landlord  = $request->landlord ?? 0;
             $property->posted_by = $request->landlord ?? JWTAuth::user()->id;
