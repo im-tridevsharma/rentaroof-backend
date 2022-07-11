@@ -1110,7 +1110,7 @@ class PropertyController extends Controller
         if ($property) {
             //check is he authorized to edit this property
             $l_user = JWTAuth::user();
-            if ($l_user->id !== $property->posted_by && $property->ibo !== $l_user->id) {
+            if ($l_user->role !== 'admin' && $l_user->id !== $property->posted_by && $property->ibo !== $l_user->id) {
                 $pv = DB::table('property_verifications')->where("property_id", $property->id)->where("ibo_id", $l_user->id)->first();
                 if ($pv) {
                     if ($pv->property_id !== $property->id || $pv->status !== 'accepted') {
@@ -1145,6 +1145,7 @@ class PropertyController extends Controller
             $property->bedrooms = $request->bedrooms;
             $property->balconies = $request->balconies;
             $property->floors = $request->floors;
+            $property->floor_number = $request->floor_number;
             $property->bathrooms = $request->bathrooms;
             $property->super_area = $request->super_area;
             $property->super_area_unit = $request->super_area_unit;
@@ -1245,7 +1246,7 @@ class PropertyController extends Controller
 
         //check is he authorized to edit this property
         $l_user = JWTAuth::user();
-        if ($l_user->id !== $p->posted_by && $l_user->id !== $p->ibo) {
+        if ($l_user->role !== 'admin' && $l_user->id !== $p->posted_by && $l_user->id !== $p->ibo) {
             $pv = DB::table('property_verifications')->where("property_id", $p->id)->where("ibo_id", $l_user->id)->first();
             if ($pv) {
                 if ($pv->property_id !== $p->id || $pv->status !== 'accepted') {
@@ -1368,7 +1369,7 @@ class PropertyController extends Controller
 
             //check is he authorized to edit this property
             $l_user = JWTAuth::user();
-            if ($l_user->id !== $p->posted_by) {
+            if ($l_user->role !== 'admin' && $l_user->id !== $p->posted_by) {
                 $pv = DB::table('property_verifications')->where("property_id", $p->id)->where("ibo_id", $l_user->id)->first();
                 if ($pv) {
                     if ($pv->property_id !== $p->id || $pv->status !== 'accepted') {
