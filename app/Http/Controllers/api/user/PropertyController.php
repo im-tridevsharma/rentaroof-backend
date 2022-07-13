@@ -48,11 +48,32 @@ class PropertyController extends Controller
             if ($request->skip) {
                 $properties->skip($request->skip);
             }
+            if ($request->type && $request->type === 'verified') {
+                $properties->where("is_approved", 1);
+            }
+            if ($request->type && $request->type === 'not-verified') {
+                $properties->where("is_approved", 0);
+            }
+            if ($request->type && $request->type === 'featured') {
+                $feature_ids = DB::table('featured_properties')->pluck('property_id')->toArray();
+                $properties->whereIn("id", $feature_ids);
+            }
+
             $properties = $properties->get();
         } else {
             $properties = Property::where("ibo", $user->id)->limit(9)->orderBy('id', 'desc');
             if ($request->skip) {
                 $properties->skip($request->skip);
+            }
+            if ($request->type && $request->type === 'verified') {
+                $properties->where("is_approved", 1);
+            }
+            if ($request->type && $request->type === 'not-verified') {
+                $properties->where("is_approved", 0);
+            }
+            if ($request->type && $request->type === 'featured') {
+                $feature_ids = DB::table('featured_properties')->pluck('property_id')->toArray();
+                $properties->whereIn("id", $feature_ids);
             }
             $properties = $properties->get()->map(function ($q) {
                 $owner = User::find($q->landlord);

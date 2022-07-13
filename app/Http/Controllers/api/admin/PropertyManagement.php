@@ -22,9 +22,20 @@ class PropertyManagement extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $properties = Property::all([
+        $properties = Property::query();
+        if ($request->type && $request->type === 'verified') {
+            $properties->where("is_approved", 1);
+        }
+        if ($request->type && $request->type === 'not-verified') {
+            $properties->where("is_approved", 0);
+        }
+        if ($request->type && $request->type === 'featured') {
+            $feature_ids = DB::table('featured_properties')->pluck('property_id')->toArray();
+            $properties->whereIn("id", $feature_ids);
+        }
+        $properties = $properties->get([
             'id', 'name', 'property_code', 'type', 'posted_by', 'is_approved',
             'is_deleted', 'is_closed'
         ]);
