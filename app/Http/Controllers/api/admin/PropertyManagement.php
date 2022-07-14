@@ -24,7 +24,7 @@ class PropertyManagement extends Controller
      */
     public function index(Request $request)
     {
-        $properties = Property::query();
+        $properties = Property::orderBy("id","desc");
         if ($request->type && $request->type === 'verified') {
             $properties->where("is_approved", 1);
         }
