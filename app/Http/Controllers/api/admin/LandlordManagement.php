@@ -20,10 +20,14 @@ class LandlordManagement extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         //fetch landlords
-        $landlords = User::where("role", "landlord")->get();
+        $landlords = User::where("role", "landlord");
+        if ($request->type && !empty($request->type)) {
+            $landlords->where("account_status", $request->type);
+        }
+        $landlords = $landlords->get();
 
         return response([
             'status'  => true,

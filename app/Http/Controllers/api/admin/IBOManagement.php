@@ -21,10 +21,14 @@ class IBOManagement extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         //fetch ibos
-        $users = User::where("role", "ibo")->get();
+        $users = User::where("role", "ibo");
+        if ($request->type && !empty($request->type)) {
+            $users->where("account_status", $request->type);
+        }
+        $users = $users->get();
 
         return response([
             'status'  => true,

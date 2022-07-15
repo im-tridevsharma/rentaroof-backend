@@ -20,9 +20,13 @@ class MeetingManagement extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $meetings = Meeting::orderBy("id", "desc")->get();
+        $meetings = Meeting::orderBy("id", "desc");
+        if ($request->type && !empty($request->type)) {
+            $meetings->where("meeting_status", $request->type);
+        }
+        $meetings = $meetings->get();
         if ($meetings) {
             return response([
                 'status'    => true,

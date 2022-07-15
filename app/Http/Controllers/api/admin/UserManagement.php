@@ -23,10 +23,14 @@ class UserManagement extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         //fetch users
-        $users = User::where("role", "tenant")->get();
+        $users = User::where("role", "tenant");
+        if ($request->type && !empty($request->type)) {
+            $users->where("account_status", $request->type);
+        }
+        $users = $users->get();
 
         return response([
             'status'  => true,
