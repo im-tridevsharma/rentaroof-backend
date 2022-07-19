@@ -32,9 +32,8 @@ class MeetingController extends Controller
     public function index()
     {
         $user = JWTAuth::user();
-        $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id)->orderBy("id", "desc");
-
-        $meetings = $meetings->get();
+        $meetings = Meeting::where("user_id", $user->id)->orWhere("created_by_id", $user->id);
+        $meetings = $meetings->orderBy("start_time", "desc")->get();
 
         if ($meetings) {
             return response([
@@ -300,40 +299,36 @@ class MeetingController extends Controller
         $landlord = User::find($id);
         if ($landlord) {
             //fetch properties of landlord
-            $properties = Property::where("posted_by", $landlord->id)->get();
+            $properties = Property::where("posted_by", $landlord->id)->pluck('id')->toArray();
             $meetings = [];
-            foreach ($properties as $p) {
-                if (Meeting::where("property_id", $p->id)->count() > 0) {
-                    $allm = Meeting::where("property_id", $p->id)->get();
-                    foreach ($allm as $m) {
-                        $p = Property::find($m->property_id);
-                        $u = User::find($m->user_id);
+            $allm = Meeting::whereIn("property_id", $properties)->orderBy("start_time", "desc")->get();
+            foreach ($allm as $m) {
+                $p = Property::find($m->property_id);
+                $u = User::find($m->user_id);
 
-                        $vvcode = VvcCode::where("property_id", $p->id)
-                            ->where("landlord_id", $p->posted_by)
-                            ->where("tenant_id", $m->created_by_id)
-                            ->where("ibo_id", $m->user_id)->first();
-                        $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
-                        $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
+                $vvcode = VvcCode::where("property_id", $p->id)
+                    ->where("landlord_id", $p->posted_by)
+                    ->where("tenant_id", $m->created_by_id)
+                    ->where("ibo_id", $m->user_id)->first();
+                $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
+                $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
 
-                        $m->property_data = $p->name . ' - ' . $p->property_code;
-                        $m->property_monthly_rent = $p->monthly_rent;
-                        $m->property_security_amount = $p->security_amount;
-                        $m->property_posted_by = $p->posted_by;
-                        $m->advance_payment = $p->advance_amount_period;
-                        $last_deal = PropertyDeal::where('property_id', $p->id)
-                            ->orderBy('id', 'desc')->first();
-                        $m->final = $last_deal ? $last_deal->offer_price : 0;
-                        $m->front_image = $p->front_image;
-                        $m->ibo = $u ? $u->first . ' ' . $u->last : '';
-                        $m->ibo_id = $u->id ?? 0;
-                        $m->vvc = $vvcode;
-                        $m->landlord = User::select(['first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
-                        $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
-                        $m->agreement = $a;
-                        array_push($meetings, $m);
-                    }
-                }
+                $m->property_data = $p->name . ' - ' . $p->property_code;
+                $m->property_monthly_rent = $p->monthly_rent;
+                $m->property_security_amount = $p->security_amount;
+                $m->property_posted_by = $p->posted_by;
+                $m->advance_payment = $p->advance_amount_period;
+                $last_deal = PropertyDeal::where('property_id', $p->id)
+                    ->orderBy('id', 'desc')->first();
+                $m->final = $last_deal ? $last_deal->offer_price : 0;
+                $m->front_image = $p->front_image;
+                $m->ibo = $u ? $u->first . ' ' . $u->last : '';
+                $m->ibo_id = $u->id ?? 0;
+                $m->vvc = $vvcode;
+                $m->landlord = User::select(['first', 'last', 'email', 'mobile'])->where("id", $p->posted_by)->first();
+                $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
+                $m->agreement = $a;
+                array_push($meetings, $m);
             }
             return response([
                 'status'    => true,
@@ -354,25 +349,21 @@ class MeetingController extends Controller
         $landlord = User::find($id);
         if ($landlord) {
             //fetch properties of landlord
-            $properties = Property::where("posted_by", $landlord->id)->get();
+            $properties = Property::where("posted_by", $landlord->id)->pluck('id')->toArray();
             $today = 0;
             $upcoming = 0;
             $history = 0;
-            foreach ($properties as $p) {
-                if (Meeting::where("property_id", $p->id)->count() > 0) {
-                    $allm = Meeting::where("property_id", $p->id)->get();
+            $allm = Meeting::whereIn("property_id", $properties)->orderBy("start_time", "desc")->get();
 
-                    foreach ($allm as $m) {
-                        if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
-                            $today++;
-                        }
-                        if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
-                            $upcoming++;
-                        }
-                        if ($m->meeting_history !== '' && $m->meeting_history !== '[]') {
-                            $history++;
-                        }
-                    }
+            foreach ($allm as $m) {
+                if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                    $today++;
+                }
+                if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
+                    $upcoming++;
+                }
+                if ($m->meeting_history !== '' && $m->meeting_history !== '[]') {
+                    $history++;
                 }
             }
             return response([
@@ -408,50 +399,45 @@ class MeetingController extends Controller
         $landlord = User::find($id);
         if ($landlord) {
             //fetch properties of landlord
-            $properties = Property::where("posted_by", $landlord->id)->get();
+            $properties = Property::where("posted_by", $landlord->id)->pluck()->toArray();
             $today = [];
             $upcoming = [];
             $history = [];
-            foreach ($properties as $p) {
-                if (Meeting::where("property_id", $p->id)->count() > 0) {
-                    $allm = Meeting::where("property_id", $p->id)->get();
+            $allm = Meeting::whereIn("property_id", $properties)->orderBy("start_time", "desc")->get();
 
-                    foreach ($allm as $m) {
-                        $user = $landlord;
-                        $u = User::find($m->user_id);
-                        $vvcode = null;
-                        $vvcode = VvcCode::where("property_id", $p->id)
-                            ->where("landlord_id", $p->posted_by)
-                            ->where("tenant_id", $m->created_by_id)
-                            ->where("ibo_id", $m->user_id)->first();
-                        $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
-                        $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
-                        $m->property_data = $p->name . ' - ' . $p->property_code;
-                        $m->vvc = $vvcode;
-                        if ($user->role === 'landlord') :
-                            $m->ibo_id = $u->id ?? 0;
-                        endif;
-                        $m->front_image = $p->front_image;
-                        $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
-                        $last_deal = PropertyDeal::where('property_id', $p->id)
-                            ->orderBy('id', 'desc')->first();
-                        $m->final = $last_deal ? $last_deal->offer_price : 0;
-                        $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
-                        $m->agreement = $a;
+            foreach ($allm as $m) {
+                $user = $landlord;
+                $u = User::find($m->user_id);
+                $vvcode = null;
+                $vvcode = VvcCode::where("property_id", $p->id)
+                    ->where("landlord_id", $p->posted_by)
+                    ->where("tenant_id", $m->created_by_id)
+                    ->where("ibo_id", $m->user_id)->first();
+                $m->is_landlord_vvc_verified = $vvcode->landlord_verified ?? 0;
+                $vvcode = $vvcode ? $vvcode->code_for_landlord : null;
+                $m->property_data = $p->name . ' - ' . $p->property_code;
+                $m->vvc = $vvcode;
+                if ($user->role === 'landlord') :
+                    $m->ibo_id = $u->id ?? 0;
+                endif;
+                $m->front_image = $p->front_image;
+                $m->ibo = $u ? $u->first . ' ' . $u->last : '-';
+                $last_deal = PropertyDeal::where('property_id', $p->id)
+                    ->orderBy('id', 'desc')->first();
+                $m->final = $last_deal ? $last_deal->offer_price : 0;
+                $a = Agreement::where("property_id", $m->property_id)->where("ibo_id", $m->user_id)->where("tenant_id", $m->created_by_id)->where("landlord_id", $p->posted_by)->first();
+                $m->agreement = $a;
 
-                        if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
-                            array_push($today, $m);
-                        }
-                        if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
-                            array_push($upcoming, $m);
-                        }
-                        if ($m->meeting_history !== '' && $m->meeting_history !== '[]') {
-                            array_push($history, $m);
-                        }
-                    }
+                if (date('Y-m-d') === date('Y-m-d', strtotime($m->start_time))) {
+                    array_push($today, $m);
+                }
+                if (date('Y-m-d') < date('Y-m-d', strtotime($m->start_time))) {
+                    array_push($upcoming, $m);
+                }
+                if ($m->meeting_history !== '' && $m->meeting_history !== '[]') {
+                    array_push($history, $m);
                 }
             }
-
             return response([
                 'status'    => true,
                 'message'   => 'Meetings fetched successfully.',
