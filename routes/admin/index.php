@@ -117,6 +117,7 @@ Route::post('payouts/earning/release/{id}', [UserManagement::class, 'release_ear
 
 Route::resource('users', UserManagement::class)->middleware('admin');
 //manage ibos
+Route::post('ibos/bulk_action', [IBOManagement::class, 'bulk_action'])->middleware('admin');
 Route::get('ibos/total', [IBOManagement::class, 'total'])->middleware('admin');
 Route::get('ibos/ban/{id}', [IBOManagement::class, 'ban'])->middleware('admin');
 Route::get('ibos/activate/{id}', [IBOManagement::class, 'activate'])->middleware('admin');
@@ -124,6 +125,8 @@ Route::post('ibos/kyc/verification/{id}', [IBOManagement::class, 'verify_kyc'])-
 Route::get('ibos/ratings/{id}', [IBOManagement::class, 'reviews'])->middleware('admin');
 Route::resource('ibos', IBOManagement::class)->middleware('admin');
 //manage landlords
+
+Route::post('landlords/bulk_action', [LandlordManagement::class, 'bulk_action'])->middleware('admin');
 Route::get('landlords/export', [LandlordManagement::class, 'export'])->middleware('admin');
 Route::get('landlords/total', [LandlordManagement::class, 'total'])->middleware('admin');
 Route::get('landlords/ban/{id}', [LandlordManagement::class, 'ban'])->middleware('admin');
