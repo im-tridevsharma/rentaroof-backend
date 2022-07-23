@@ -6,6 +6,7 @@ use App\Events\ConversationCreated;
 use App\Events\MessageSentEvent;
 use App\Events\NotificationSent;
 use App\Http\Controllers\Controller;
+use App\Models\Address;
 use App\Models\ChatMessage;
 use App\Models\Conversation;
 use App\Models\IboNotification;
@@ -29,7 +30,7 @@ class ConversationController extends Controller
             $conversations = Conversation::where("sender_id", $user->id)->orWhere("receiver_id", $user->id)->get()->map(function ($c) {
                 $receiver = User::find($c->receiver_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id', 'role']);
                 $sender = User::find($c->sender_id)->only(['first', 'last', 'profile_pic', 'is_logged_in', 'id', 'role']);
-                $last_message = ChatMessage::select("id", "conversation_id", "message_type", "message")->where("conversation_id", $c->id)->orderBy('created_at', 'desc')->first();
+                $last_message = ChatMessage::select("id", "conversation_id", "message_type", "message", "isHtml")->where("conversation_id", $c->id)->orderBy('created_at', 'desc')->first();
                 $c->receiver = $receiver;
                 $c->sender = $sender;
                 if ($last_message) {
@@ -314,12 +315,57 @@ class ConversationController extends Controller
         $conversation = Conversation::find($request->conversation_id);
 
         if ($conversation) {
+
             $message = new ChatMessage;
             $message->conversation_id = $conversation->id;
             $message->sender_id = $request->sender_id;
             $message->receiver_id = $request->receiver_id;
             $message->message_type = $request->message_type;
-            $message->message = $request->message;
+
+            if (strpos(basename($request->message), 'RARP-') !== false) {
+                $property = Property::where("property_code", basename($request->message))->first();
+                $address = Address::find($property->address_id);
+                $message->message = '
+                <a href="' . $request->message . '" target="_blank">
+                <div className="flex item-center">
+                    <img src="' . $property->front_image . '"/>
+                    <div style="margin-top:10px;">
+                        <h5>' . $property->name . '</h5>
+                        <p><b style="margin-right:10px;">Monthly Rent:</b>' . $property->monthly_rent . '</p>
+                        <p><b style="margin-right:10px;">Address:</b>' . $address->full_address . '</p>
+                        <a target="_blank" style="margin-top:10px;display:block;color:dodgerblue;" href="' . $request->message . '">' . $request->message . '</a>
+                    </div>
+                </div>
+                </a>
+                ';
+
+                $message->isHtml = 'yes';
+            } else if (filter_var($request->message, FILTER_VALIDATE_URL)) {
+                $meta = get_meta_tags($request->message);
+                $title = get_meta_title($request->message);
+                $image = $meta['image'] ?? '';
+                $message->message = '
+                <a href="' . $request->message . '" target="_blank">
+                <div className="flex item-center">';
+                if ($image) {
+                    $message->message .= '<img src="' . $image . '"/>';
+                }
+                $message->message .= '<div style="margin-top:10px;">
+                        <h5>' . $title . '</h5>';
+                if (isset($meta['description'])) {
+                    $message->message .= '<p>' . $meta['description'] . '</p>';
+                }
+                $message->message .= ' <a target="_blank" style="margin-top:10px;display:block;color:dodgerblue;" href="' . $request->message . '">' . $request->message . '</a>
+                    </div>
+                </div>
+                </a>
+                ';
+                $message->isHtml = 'yes';
+            } else {
+                $message->isHtml = 'no';
+                $message->message = $request->message;
+            }
+
             $message->date = date('Y-m-d');
 
             $message->save();
